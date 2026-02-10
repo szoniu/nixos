@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# hooks/after_install.sh.example — Runs after nixos-install
+# Rename to after_install.sh and chmod +x to activate.
+echo "after_install hook executed"

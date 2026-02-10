@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# hooks/before_install.sh.example — Runs before nixos-install
+# Rename to before_install.sh and chmod +x to activate.
+echo "before_install hook executed"
