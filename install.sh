@@ -45,6 +45,9 @@ source "${TUI_DIR}/progress.sh"
 # --- Cleanup trap ---
 cleanup() {
     local rc=$?
+    if { true >&4; } 2>/dev/null; then
+        exec 2>&4; exec 4>&-
+    fi
     if [[ ${rc} -ne 0 ]]; then
         eerror "Installer exited with code ${rc}"
         eerror "Log file: ${LOG_FILE}"
@@ -52,6 +55,8 @@ cleanup() {
     return ${rc}
 }
 trap cleanup EXIT
+trap 'trap - EXIT; cleanup; exit 130' INT
+trap 'trap - EXIT; cleanup; exit 143' TERM
 
 # --- Parse arguments ---
 MODE="full"
@@ -71,6 +76,7 @@ Commands:
   (default)       Full installation (wizard + install)
   --configure     Run only the TUI wizard (generate config)
   --install       Run only installation (requires existing config)
+  --resume        Resume interrupted installation (scan disks for checkpoints)
 
 Options:
   --config FILE   Use specified config file
@@ -85,6 +91,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --configure)     MODE="configure"; shift ;;
         --install)       MODE="install"; shift ;;
+        --resume)        MODE="resume"; shift ;;
         --config)        CONFIG_FILE="$2"; shift 2 ;;
         --dry-run)       DRY_RUN=1; shift ;;
         --force)         FORCE=1; shift ;;
@@ -173,6 +180,63 @@ main() {
             init_dialog
             screen_progress
             run_post_install
+            ;;
+        resume)
+            local resume_rc=0
+            try_resume_from_disk || resume_rc=$?
+
+            case ${resume_rc} in
+                0)
+                    config_load "${CONFIG_FILE}"
+                    init_dialog
+                    local completed_list="" cp_name
+                    for cp_name in "${CHECKPOINTS[@]}"; do
+                        checkpoint_reached "${cp_name}" && completed_list+="  - ${cp_name}\n"
+                    done
+                    dialog_msgbox "Resume: Data Recovered" \
+                        "Found previous installation on ${RESUME_FOUND_PARTITION}.\n\nRecovered config and checkpoints:\n\n${completed_list}\nResuming installation..."
+                    screen_progress
+                    run_post_install
+                    ;;
+                1)
+                    init_dialog
+                    local infer_rc=0
+                    infer_config_from_partition "${RESUME_FOUND_PARTITION}" "${RESUME_FOUND_FSTYPE}" || infer_rc=$?
+                    if [[ ${infer_rc} -eq 0 ]]; then
+                        config_save "${CONFIG_FILE}"
+                        local inferred_summary=""
+                        inferred_summary+="Partition: ${ROOT_PARTITION:-?}\n"
+                        inferred_summary+="Disk: ${TARGET_DISK:-?}\n"
+                        inferred_summary+="Filesystem: ${FILESYSTEM:-?}\n"
+                        inferred_summary+="ESP: ${ESP_PARTITION:-?}\n"
+                        [[ -n "${HOSTNAME:-}" ]] && inferred_summary+="Hostname: ${HOSTNAME}\n"
+                        [[ -n "${TIMEZONE:-}" ]] && inferred_summary+="Timezone: ${TIMEZONE}\n"
+                        local completed_list="" cp_name
+                        for cp_name in "${CHECKPOINTS[@]}"; do
+                            checkpoint_reached "${cp_name}" && completed_list+="  - ${cp_name}\n"
+                        done
+                        dialog_msgbox "Resume: Config Inferred" \
+                            "Found checkpoints on ${RESUME_FOUND_PARTITION} (no config file).\n\nInferred configuration:\n${inferred_summary}\nCompleted phases:\n${completed_list}\nResuming installation..."
+                        screen_progress
+                        run_post_install
+                    else
+                        dialog_msgbox "Resume: Partial Recovery" \
+                            "Found checkpoints but could not fully infer configuration.\nPlease complete the wizard."
+                        run_configuration_wizard
+                        screen_progress
+                        run_post_install
+                    fi
+                    ;;
+                2)
+                    init_dialog
+                    dialog_msgbox "Resume: Nothing Found" \
+                        "No previous installation data found.\n\nStarting full installation."
+                    run_configuration_wizard
+                    init_dialog
+                    screen_progress
+                    run_post_install
+                    ;;
+            esac
             ;;
     esac
 

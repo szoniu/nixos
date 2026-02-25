@@ -119,6 +119,7 @@ disk_execute_plan() {
         esac
     fi
 
+    cleanup_target_disk
     disk_plan_show
 
     local i

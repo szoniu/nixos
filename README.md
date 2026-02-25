@@ -103,6 +103,7 @@ sudo nixos-rebuild switch
 ./install.sh                    # Pełna instalacja (wizard + install)
 ./install.sh --configure        # Tylko wizard (generuje config)
 ./install.sh --config plik.conf --install   # Z gotowego configa
+./install.sh --resume           # Wznowienie po awarii (skanuje dyski)
 ./install.sh --dry-run          # Symulacja bez dotykania dysków
 ```
 
@@ -162,7 +163,10 @@ Presety przenośne — sprzęt re-wykrywany przy imporcie.
 
 - **Błąd** — menu: Retry / Shell / Continue / Log / Abort
 - **Awaria** — checkpointy faz, wznowienie od ostatniego kroku
+- **Przerwa w zasilaniu** — `./install.sh --resume` skanuje dyski i wznawia od ostatniego checkpointu. Jeśli config nie przetrwał, installer odczyta konfigurację z plików na dysku (fstab, hostname, itp.)
 - **Log** — `/tmp/nixos-installer.log`
+
+> **Tip SSH**: Po restarcie Live ISO klucz hosta się zmieni. Wyczyść stary klucz: `ssh-keygen -R <ip>`
 
 ## Różnice vs Gentoo installer
 
@@ -180,6 +184,7 @@ Presety przenośne — sprzęt re-wykrywany przy imporcie.
 bash tests/test_config.sh          # Config round-trip (12 assertions)
 bash tests/test_disk.sh            # Disk planning (8 assertions)
 bash tests/test_nixos_config.sh    # configuration.nix generation (22 assertions)
+bash tests/test_infer_config.sh    # Config inference from installed system (36 assertions)
 bash tests/shellcheck.sh           # Lint
 ```
 

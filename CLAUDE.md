@@ -28,11 +28,11 @@ lib/
 ├── protection.sh       — Guard: sprawdza $_NIXOS_INSTALLER
 ├── constants.sh        — Stałe, ścieżki, CONFIG_VARS[]
 ├── logging.sh          — elog/einfo/ewarn/eerror/die/die_trace
-├── utils.sh            — try(), checkpoint_*, is_root/is_efi/has_network
+├── utils.sh            — try (interactive recovery, text fallback, LIVE_OUTPUT via tee), checkpoint_set/reached/validate/migrate_to_target, cleanup_target_disk, try_resume_from_disk, infer_config_from_partition, is_root/is_efi/has_network
 ├── dialog.sh           — Wrapper dialog/whiptail, wizard runner
 ├── config.sh           — config_save/load/set/get (${VAR@Q})
 ├── hardware.sh         — detect_cpu/gpu/disks/esp
-├── disk.sh             — Dwufazowe: plan → execute, mount/unmount, LUKS support
+├── disk.sh             — Dwufazowe: plan → cleanup_target_disk + execute, mount/unmount, LUKS support
 ├── nixos_config.sh     — KLUCZOWY: generate_nixos_config(), _write_configuration_nix()
 ├── hooks.sh            — maybe_exec 'before_X' / 'after_X'
 └── preset.sh           — preset_export/import (hardware overlay)
@@ -54,11 +54,11 @@ tui/
 ├── extra_packages.sh   — wolne pole nix packages
 ├── preset_save.sh      — eksport
 ├── summary.sh          — podsumowanie + YES + countdown
-└── progress.sh         — gauge + fazowa instalacja
+└── progress.sh         — resume detection + infobox (krótkie fazy) + live terminal (nixos-install)
 
 presets/                — desktop-nvidia.conf, desktop-amd.conf, desktop-intel-encrypted.conf
 hooks/                  — *.sh.example
-tests/                  — test_config, test_disk, test_nixos_config, shellcheck
+tests/                  — test_config, test_disk, test_nixos_config, test_infer_config, shellcheck
 ```
 
 ### lib/nixos_config.sh — najważniejszy moduł
@@ -79,11 +79,13 @@ Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 ### Konwencje (identyczne jak w Gentoo)
 
 - Ekrany TUI: `screen_*()` zwracają 0=next, 1=back, 2=abort
-- `try` — interaktywne recovery na błędach
-- Checkpointy — wznowienie po awarii
+- `try` — interaktywne recovery na błędach, text fallback gdy brak dialog
+- Checkpointy — wznowienie po awarii, `checkpoint_validate()` weryfikuje artefakty
 - `${VAR@Q}` — bezpieczny quoting w configach
 - `(( var++ )) || true` — pod set -e
 - `_NIXOS_INSTALLER` — guard w protection.sh
+- `--resume` — `try_resume_from_disk()` skanuje partycje, zwraca 0/1/2
+- Config inference — `infer_config_from_partition()` odczytuje fstab, hostname, timezone, keymap, crypttab
 
 ### Różnice vs Gentoo installer
 
@@ -100,7 +102,16 @@ Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 bash tests/test_config.sh          # 12 assertions
 bash tests/test_disk.sh            # 8 assertions
 bash tests/test_nixos_config.sh    # 22 assertions — najważniejszy test
+bash tests/test_infer_config.sh    # 36 assertions — resume config inference
 ```
+
+## Znane wzorce i pułapki
+
+- **stderr redirect a dialog UI**: Gdy stderr jest przekierowany do log file (`exec 2>>LOG`), `dialog` jest niewidoczny. `try()` musi tymczasowo przywrócić stderr (fd 4). Wzorzec: `if { true >&4; } 2>/dev/null; then exec 2>&4; fi`.
+- **`try_resume_from_disk()` zwraca 0/1/2, nie boolean**: 0 = config + checkpointy, 1 = tylko checkpointy, 2 = nic. Nie używać `if try_resume_from_disk` — zawsze `rc=0; try_resume_from_disk || rc=$?; case ${rc}`.
+- **Checkpointy na dysku docelowym**: Po zamontowaniu dysku checkpointy migrują z `/tmp` na `${MOUNTPOINT}/tmp/nixos-installer-checkpoints/`. Reformatowanie dysku kasuje checkpointy. `checkpoint_validate()` weryfikuje artefakty.
+- **`cleanup_target_disk()`**: Odmontowuje partycje i swap przed `sfdisk`. Bez tego `sfdisk` odmawia zapisu na dysk w użyciu.
+- **Config inference testowanie**: `_RESUME_TEST_DIR` + `_INFER_UUID_MAP` pozwalają testować bez prawdziwego mount/blkid.
 
 ## Jak dodawać opcje do configuration.nix
 

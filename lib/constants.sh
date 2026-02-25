@@ -2,13 +2,14 @@
 # constants.sh — Global constants for the NixOS installer
 source "${LIB_DIR}/protection.sh"
 
-readonly INSTALLER_VERSION="1.0.0"
+readonly INSTALLER_VERSION="1.1.0"
 readonly INSTALLER_NAME="NixOS TUI Installer"
 
 # Paths (allow override from environment)
 : "${MOUNTPOINT:=/mnt}"
 : "${LOG_FILE:=/tmp/nixos-installer.log}"
 : "${CHECKPOINT_DIR:=/tmp/nixos-installer-checkpoints}"
+: "${CHECKPOINT_DIR_SUFFIX:=/tmp/nixos-installer-checkpoints}"
 : "${CONFIG_FILE:=/tmp/nixos-installer.conf}"
 : "${NIXOS_CONFIG_DIR:=/mnt/etc/nixos}"
 
