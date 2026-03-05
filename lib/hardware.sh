@@ -41,12 +41,13 @@ detect_gpu() {
     GPU_DEVICE_NAME=""
     GPU_DRIVER=""
     GPU_NVIDIA_OPEN="no"
-    VIDEO_CARDS=""
     HYBRID_GPU="no"
     IGPU_VENDOR=""
     IGPU_DEVICE_NAME=""
     DGPU_VENDOR=""
     DGPU_DEVICE_NAME=""
+    IGPU_BUS_ID=""
+    DGPU_BUS_ID=""
 
     # Collect all GPU lines
     local -a gpu_lines=()
@@ -70,8 +71,9 @@ detect_gpu() {
         _parse_hybrid_gpu "${gpu_lines[@]}"
     fi
 
-    export GPU_VENDOR GPU_DEVICE_ID GPU_DEVICE_NAME GPU_DRIVER GPU_NVIDIA_OPEN VIDEO_CARDS
+    export GPU_VENDOR GPU_DEVICE_ID GPU_DEVICE_NAME GPU_DRIVER GPU_NVIDIA_OPEN
     export HYBRID_GPU IGPU_VENDOR IGPU_DEVICE_NAME DGPU_VENDOR DGPU_DEVICE_NAME
+    export IGPU_BUS_ID DGPU_BUS_ID
 }
 
 # _parse_single_gpu — Parse a single GPU line
@@ -199,6 +201,18 @@ _parse_hybrid_gpu() {
         IGPU_DEVICE_NAME="${names[igpu_idx]}"
         DGPU_VENDOR="${vendors[dgpu_idx]}"
         DGPU_DEVICE_NAME="${names[dgpu_idx]}"
+
+        # Extract PCI bus IDs in NixOS format (PCI:bus:slot:func)
+        local igpu_pci dgpu_pci
+        igpu_pci=$(echo "${lines[igpu_idx]}" | sed -n 's/^\([0-9a-fA-F:\.]*\) .*/\1/p') || true
+        dgpu_pci=$(echo "${lines[dgpu_idx]}" | sed -n 's/^\([0-9a-fA-F:\.]*\) .*/\1/p') || true
+        # Convert "XX:YY.Z" to "PCI:X:Y:Z" (decimal)
+        if [[ "${igpu_pci}" =~ ^([0-9a-fA-F]+):([0-9a-fA-F]+)\.([0-9a-fA-F]+)$ ]]; then
+            IGPU_BUS_ID="PCI:$(( 16#${BASH_REMATCH[1]} )):$(( 16#${BASH_REMATCH[2]} )):$(( 16#${BASH_REMATCH[3]} ))"
+        fi
+        if [[ "${dgpu_pci}" =~ ^([0-9a-fA-F]+):([0-9a-fA-F]+)\.([0-9a-fA-F]+)$ ]]; then
+            DGPU_BUS_ID="PCI:$(( 16#${BASH_REMATCH[1]} )):$(( 16#${BASH_REMATCH[2]} )):$(( 16#${BASH_REMATCH[3]} ))"
+        fi
 
         # Primary GPU vendor = dGPU vendor (for driver selection)
         GPU_VENDOR="${DGPU_VENDOR}"

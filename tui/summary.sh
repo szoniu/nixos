@@ -36,6 +36,7 @@ screen_summary() {
     fi
     [[ "${GPU_VENDOR:-}" == "nvidia" ]] && s+="NVIDIA open:  ${GPU_NVIDIA_OPEN:-no}\n"
     [[ "${ASUS_ROG_DETECTED:-0}" == "1" ]] && s+="ASUS ROG:     detected\n"
+    [[ "${ENABLE_ASUSCTL:-no}" == "yes" ]] && s+="asusctl:      enabled\n"
     [[ "${ENABLE_FINGERPRINT:-no}" == "yes" ]] && s+="Fingerprint:  fprintd enabled\n"
     [[ "${ENABLE_THUNDERBOLT:-no}" == "yes" ]] && s+="Thunderbolt:  bolt enabled\n"
     [[ "${ENABLE_SENSORS:-no}" == "yes" ]] && s+="IIO sensors:  iio-sensor-proxy enabled\n"

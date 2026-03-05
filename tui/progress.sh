@@ -105,7 +105,8 @@ screen_progress() {
     exec 2>&4
     exec 4>&-
 
-    dialog_msgbox "Complete" "NixOS has been installed successfully!"
+    dialog_msgbox "Complete" \
+        "NixOS has been installed successfully!\n\nRemove the installation media and reboot.\n\nLog file: ${LOG_FILE}"
     return "${TUI_NEXT}"
 }
 
@@ -140,8 +141,13 @@ _show_phase_status() {
         elif (( j == current )); then bar+="[>>>>] "
         else bar+="[    ] "; fi
     done
-    dialog_infobox "Installing NixOS  [${current}/${total}]" \
-        "${bar}\n\n${desc}...\n\nPlease wait. See ${LOG_FILE} for details."
+    # Temporarily restore stderr for dialog visibility
+    if { true >&4; } 2>/dev/null; then
+        exec 2>&4
+        dialog_infobox "Installing NixOS  [${current}/${total}]" \
+            "${bar}\n\n${desc}...\n\nPlease wait. See ${LOG_FILE} for details."
+        exec 2>>"${LOG_FILE}"
+    fi
 }
 
 _execute_phase() {

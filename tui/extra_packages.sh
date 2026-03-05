@@ -30,6 +30,9 @@ screen_extra_packages() {
     if [[ "${WWAN_DETECTED:-0}" == "1" ]]; then
         items+=("modemmanager" "WWAN/LTE modem support" "off")
     fi
+    if [[ "${ASUS_ROG_DETECTED:-0}" == "1" ]]; then
+        items+=("asusctl" "ASUS ROG/TUF laptop support (asusd)" "on")
+    fi
 
     # Services toggles
     items+=("flatpak"   "Flatpak app store"   "$( [[ "${ENABLE_FLATPAK:-no}" == "yes" ]] && echo "on" || echo "off" )")
@@ -48,6 +51,7 @@ screen_extra_packages() {
     ENABLE_THUNDERBOLT="no"
     ENABLE_SENSORS="no"
     ENABLE_WWAN="no"
+    ENABLE_ASUSCTL="no"
     local -a extra_pkgs=()
 
     local pkg
@@ -60,6 +64,7 @@ screen_extra_packages() {
             bolt)              ENABLE_THUNDERBOLT="yes" ;;
             iio-sensor-proxy)  ENABLE_SENSORS="yes" ;;
             modemmanager)      ENABLE_WWAN="yes" ;;
+            asusctl)           ENABLE_ASUSCTL="yes" ;;
             *)                 extra_pkgs+=("${pkg}") ;;
         esac
     done
@@ -70,7 +75,7 @@ screen_extra_packages() {
         "Additional nix packages (space-separated).\n\n\
 Examples: neovim tmux ripgrep fd bat\n\n\
 Leave empty to skip:" \
-        "${EXTRA_PACKAGES:-}") || true
+        "${EXTRA_PACKAGES:-}") || return "${TUI_BACK}"
 
     # Merge
     local all_extras="${extra_pkgs[*]}"
@@ -78,7 +83,7 @@ Leave empty to skip:" \
     EXTRA_PACKAGES="${all_extras## }"
 
     export ENABLE_FLATPAK ENABLE_PRINTING ENABLE_BLUETOOTH
-    export ENABLE_FINGERPRINT ENABLE_THUNDERBOLT ENABLE_SENSORS ENABLE_WWAN
+    export ENABLE_FINGERPRINT ENABLE_THUNDERBOLT ENABLE_SENSORS ENABLE_WWAN ENABLE_ASUSCTL
     export EXTRA_PACKAGES
 
     einfo "Extras: flatpak=${ENABLE_FLATPAK}, printing=${ENABLE_PRINTING}, bluetooth=${ENABLE_BLUETOOTH}"

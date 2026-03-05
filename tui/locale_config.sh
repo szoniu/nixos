@@ -17,6 +17,9 @@ screen_locale_config() {
         "pt_BR.UTF-8" "Portuguese (Brazil)" \
         "ja_JP.UTF-8" "Japanese" \
         "zh_CN.UTF-8" "Chinese (Simplified)" \
+        "it_IT.UTF-8" "Italian" \
+        "ko_KR.UTF-8" "Korean" \
+        "ru_RU.UTF-8" "Russian" \
         "custom"       "Enter custom locale") || return "${TUI_BACK}"
     [[ "${locale_choice}" == "custom" ]] && { locale_choice=$(dialog_inputbox "Custom Locale" "Locale:" "en_US.UTF-8") || return "${TUI_BACK}"; }
     LOCALE="${locale_choice}"; export LOCALE

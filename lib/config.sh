@@ -138,8 +138,8 @@ validate_config() {
     fi
 
     if [[ -n "${SWAP_TYPE:-}" ]] && \
-       [[ "${SWAP_TYPE}" != "none" && "${SWAP_TYPE}" != "partition" && "${SWAP_TYPE}" != "file" ]]; then
-        errors+=("SWAP_TYPE='${SWAP_TYPE}' — must be none, partition, or file")
+       [[ "${SWAP_TYPE}" != "none" && "${SWAP_TYPE}" != "partition" && "${SWAP_TYPE}" != "file" && "${SWAP_TYPE}" != "zram" ]]; then
+        errors+=("SWAP_TYPE='${SWAP_TYPE}' — must be none, zram, partition, or file")
     fi
 
     if [[ -n "${GPU_VENDOR:-}" ]] && \

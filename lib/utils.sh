@@ -158,8 +158,13 @@ checkpoint_migrate_to_target() {
     local target_dir="${MOUNTPOINT}${CHECKPOINT_DIR_SUFFIX}"
     [[ "${CHECKPOINT_DIR}" == "${target_dir}" ]] && return 0
     mkdir -p "${target_dir}"
-    [[ -d "${CHECKPOINT_DIR}" ]] && cp -a "${CHECKPOINT_DIR}/"* "${target_dir}/" 2>/dev/null || true
-    rm -rf "${CHECKPOINT_DIR}"
+    if [[ -d "${CHECKPOINT_DIR}" ]]; then
+        if cp -a "${CHECKPOINT_DIR}/"* "${target_dir}/" 2>/dev/null; then
+            rm -rf "${CHECKPOINT_DIR}"
+        else
+            ewarn "Failed to copy checkpoints to target — keeping originals"
+        fi
+    fi
     CHECKPOINT_DIR="${target_dir}"
     export CHECKPOINT_DIR
 }

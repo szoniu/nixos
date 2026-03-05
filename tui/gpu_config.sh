@@ -42,10 +42,14 @@ screen_gpu_config() {
         nvidia) GPU_VENDOR="nvidia"; GPU_DRIVER="nvidia"
                 dialog_yesno "NVIDIA Open" \
                     "Use open-source NVIDIA kernel module?\n(Recommended for RTX 20xx and newer)" \
-                    && GPU_NVIDIA_OPEN="yes" || GPU_NVIDIA_OPEN="no" ;;
-        amdgpu) GPU_VENDOR="amd"; GPU_DRIVER="amdgpu"; GPU_NVIDIA_OPEN="no" ;;
-        intel)  GPU_VENDOR="intel"; GPU_DRIVER="modesetting"; GPU_NVIDIA_OPEN="no" ;;
-        none)   GPU_VENDOR="none"; GPU_DRIVER=""; GPU_NVIDIA_OPEN="no" ;;
+                    && GPU_NVIDIA_OPEN="yes" || GPU_NVIDIA_OPEN="no"
+                HYBRID_GPU="no"; IGPU_VENDOR=""; IGPU_DEVICE_NAME=""; DGPU_VENDOR=""; DGPU_DEVICE_NAME="" ;;
+        amdgpu) GPU_VENDOR="amd"; GPU_DRIVER="amdgpu"; GPU_NVIDIA_OPEN="no"
+                HYBRID_GPU="no"; IGPU_VENDOR=""; IGPU_DEVICE_NAME=""; DGPU_VENDOR=""; DGPU_DEVICE_NAME="" ;;
+        intel)  GPU_VENDOR="intel"; GPU_DRIVER="modesetting"; GPU_NVIDIA_OPEN="no"
+                HYBRID_GPU="no"; IGPU_VENDOR=""; IGPU_DEVICE_NAME=""; DGPU_VENDOR=""; DGPU_DEVICE_NAME="" ;;
+        none)   GPU_VENDOR="none"; GPU_DRIVER=""; GPU_NVIDIA_OPEN="no"
+                HYBRID_GPU="no"; IGPU_VENDOR=""; IGPU_DEVICE_NAME=""; DGPU_VENDOR=""; DGPU_DEVICE_NAME="" ;;
     esac
 
     export GPU_VENDOR GPU_DRIVER GPU_NVIDIA_OPEN

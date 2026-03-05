@@ -1,4 +1,19 @@
 #!/usr/bin/env bash
 # hooks/before_install.sh.example — Runs before nixos-install
 # Rename to before_install.sh and chmod +x to activate.
+#
+# Available environment variables:
+#   All CONFIG_VARS (TARGET_DISK, FILESYSTEM, HOSTNAME, GPU_VENDOR, etc.)
+#   MOUNTPOINT, LOG_FILE, SCRIPT_DIR, CONFIG_FILE
+#   DRY_RUN, FORCE, NON_INTERACTIVE
+#
+# Example: Backup current partition table
+# sfdisk --dump "${TARGET_DISK}" > "/tmp/partition-backup-$(date +%Y%m%d).dump"
+#
+# Example: Add custom NixOS config overlay
+# cat >> "${MOUNTPOINT}/etc/nixos/configuration.nix" << 'EOF'
+#   # Custom overlay
+#   services.tailscale.enable = true;
+# EOF
+
 echo "before_install hook executed"

@@ -2,7 +2,7 @@
 source "${LIB_DIR}/protection.sh"
 
 screen_swap_config() {
-    local current="${SWAP_TYPE:-none}"
+    local current="${SWAP_TYPE:-zram}"
     local on_zram="off" on_part="off" on_none="off"
     case "${current}" in zram) on_zram="on";; partition) on_part="on";; none) on_none="on";; esac
 

@@ -2,7 +2,7 @@
 source "${LIB_DIR}/protection.sh"
 
 screen_hw_detect() {
-    dialog_msgbox "Hardware Detection" "Scanning your hardware..." || return "${TUI_ABORT}"
+    dialog_infobox "Hardware Detection" "Scanning your hardware..."
     detect_all_hardware
     local summary
     summary=$(get_hardware_summary)

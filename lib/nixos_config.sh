@@ -93,6 +93,12 @@ NIXHEAD
     # --- Bootloader ---
     _nix_bootloader
 
+    # --- Kernel ---
+    _nix_kernel
+
+    # --- Swap ---
+    _nix_swap
+
     # --- Networking ---
     _nix_networking
 
@@ -124,12 +130,44 @@ NIXHEAD
     _nix_settings
 
     # --- State version ---
+    local state_ver="${NIXOS_CHANNEL##*-}"
+    # For nixos-unstable, read version from the running system
+    if [[ "${state_ver}" == "unstable" ]]; then
+        state_ver=$(nixos-version 2>/dev/null | sed 's/\([0-9]*\.[0-9]*\).*/\1/') || state_ver="24.11"
+        [[ -z "${state_ver}" || ! "${state_ver}" =~ ^[0-9]+\.[0-9]+$ ]] && state_ver="24.11"
+    fi
     cat << NIXFOOT
 
   # DO NOT CHANGE — tracks the NixOS release at install time
-  system.stateVersion = "${NIXOS_CHANNEL##*-}";
+  system.stateVersion = "${state_ver}";
 }
 NIXFOOT
+}
+
+_nix_kernel() {
+    case "${KERNEL_PACKAGE:-default}" in
+        latest)
+            echo "  boot.kernelPackages = pkgs.linuxPackages_latest;"
+            echo "" ;;
+        lts)
+            echo "  boot.kernelPackages = pkgs.linuxPackages;"
+            echo "" ;;
+        zen)
+            echo "  boot.kernelPackages = pkgs.linuxPackages_zen;"
+            echo "" ;;
+    esac
+}
+
+_nix_swap() {
+    case "${SWAP_TYPE:-none}" in
+        zram)
+            cat << 'NIX'
+  # Swap: zram
+  zramSwap.enable = true;
+
+NIX
+            ;;
+    esac
 }
 
 _nix_bootloader() {
@@ -138,13 +176,6 @@ _nix_bootloader() {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 NIX
-
-    if [[ "${WINDOWS_DETECTED:-0}" == "1" ]] || [[ "${ESP_REUSE:-no}" == "yes" ]]; then
-        cat << 'NIX'
-  # Dual-boot: os-prober for Windows detection
-  boot.loader.grub.enable = false;  # using systemd-boot
-NIX
-    fi
 
     if [[ "${ENCRYPTION:-none}" == "luks" ]]; then
         local luks_uuid
@@ -188,7 +219,8 @@ _nix_locale() {
   time.timeZone = "${tz}";
   i18n.defaultLocale = "${loc}";
   i18n.extraLocaleSettings = {
-    LC_ALL = "${loc}";
+    LC_MESSAGES = "${loc}";
+    LC_TIME = "${loc}";
   };
   console.keyMap = "${km}";
 NIX
@@ -285,10 +317,20 @@ NIX
 
             # Hybrid GPU: NVIDIA PRIME offload
             if [[ "${HYBRID_GPU:-no}" == "yes" ]]; then
+                local igpu_bus="${IGPU_BUS_ID:-}"
+                local dgpu_bus="${DGPU_BUS_ID:-}"
                 cat << 'NIX'
 
   # Hybrid GPU: NVIDIA PRIME render offload
   hardware.nvidia.prime = {
+NIX
+                if [[ "${IGPU_VENDOR:-}" == "intel" && -n "${igpu_bus}" ]]; then
+                    echo "    intelBusId = \"${igpu_bus}\";"
+                elif [[ "${IGPU_VENDOR:-}" == "amd" && -n "${igpu_bus}" ]]; then
+                    echo "    amdgpuBusId = \"${igpu_bus}\";"
+                fi
+                [[ -n "${dgpu_bus}" ]] && echo "    nvidiaBusId = \"${dgpu_bus}\";"
+                cat << 'NIX'
     offload = {
       enable = true;
       enableOffloadCmd = true;
@@ -357,7 +399,7 @@ NIX
         cat << 'NIX'
 
   # WWAN/LTE modem
-  networking.networkmanager.enableModemManager = true;
+  services.modemManager.enable = true;
 NIX
     fi
 
@@ -437,16 +479,36 @@ _nix_services() {
   services.fwupd.enable = true;
 NIX
 
+    if [[ "${ENABLE_ASUSCTL:-no}" == "yes" ]]; then
+        cat << 'NIX'
+
+  # ASUS ROG/TUF support
+  services.asusd.enable = true;
+  services.asusd.enableUserService = true;
+NIX
+    fi
+
     echo ""
 }
 
 _nix_settings() {
-    cat << 'NIX'
+    if [[ "${USE_FLAKES:-yes}" == "yes" ]]; then
+        cat << 'NIX'
   # --- Nix settings ---
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
   };
+NIX
+    else
+        cat << 'NIX'
+  # --- Nix settings ---
+  nix.settings = {
+    auto-optimise-store = true;
+  };
+NIX
+    fi
+    cat << 'NIX'
 
   # Garbage collection
   nix.gc = {

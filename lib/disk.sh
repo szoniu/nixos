@@ -8,7 +8,9 @@ disk_plan_reset() { DISK_ACTIONS=(); }
 
 disk_plan_add() {
     local desc="$1"; shift
-    DISK_ACTIONS+=("${desc}|||$*")
+    local cmd
+    cmd=$(printf '%q ' "$@")
+    DISK_ACTIONS+=("${desc}|||${cmd}")
 }
 
 disk_plan_show() {
@@ -62,11 +64,6 @@ disk_plan_auto() {
     fi
 
     ROOT_PARTITION="${part_prefix}${part_num}"
-    case "${fs}" in
-        ext4)  disk_plan_add "Format root as ext4"  mkfs.ext4 -L nixos "${ROOT_PARTITION}" ;;
-        btrfs) disk_plan_add "Format root as btrfs" mkfs.btrfs -f -L nixos "${ROOT_PARTITION}" ;;
-        xfs)   disk_plan_add "Format root as XFS"   mkfs.xfs -f -L nixos "${ROOT_PARTITION}" ;;
-    esac
 
     if [[ "${ENCRYPTION:-none}" == "luks" ]]; then
         # Wrap root in LUKS
@@ -76,12 +73,13 @@ disk_plan_auto() {
         disk_plan_add "Open LUKS device" \
             cryptsetup open "${LUKS_PARTITION}" cryptroot
         ROOT_PARTITION="/dev/mapper/cryptroot"
-        case "${fs}" in
-            ext4)  disk_plan_add "Format LUKS root as ext4"  mkfs.ext4 -L nixos "${ROOT_PARTITION}" ;;
-            btrfs) disk_plan_add "Format LUKS root as btrfs" mkfs.btrfs -f -L nixos "${ROOT_PARTITION}" ;;
-            xfs)   disk_plan_add "Format LUKS root as XFS"   mkfs.xfs -f -L nixos "${ROOT_PARTITION}" ;;
-        esac
     fi
+
+    case "${fs}" in
+        ext4)  disk_plan_add "Format root as ext4"  mkfs.ext4 -L nixos "${ROOT_PARTITION}" ;;
+        btrfs) disk_plan_add "Format root as btrfs" mkfs.btrfs -f -L nixos "${ROOT_PARTITION}" ;;
+        xfs)   disk_plan_add "Format root as XFS"   mkfs.xfs -f -L nixos "${ROOT_PARTITION}" ;;
+    esac
 
     export ESP_PARTITION ROOT_PARTITION SWAP_PARTITION LUKS_PARTITION
     einfo "Auto-partition plan generated for ${disk}"
@@ -99,11 +97,23 @@ disk_plan_dualboot() {
     fi
 
     if [[ -z "${ROOT_PARTITION:-}" ]]; then
-        local part_count
-        part_count=$(lsblk -lno NAME "${TARGET_DISK}" 2>/dev/null | wc -l)
         local part_prefix="${TARGET_DISK}"
         [[ "${TARGET_DISK}" =~ [0-9]$ ]] && part_prefix="${TARGET_DISK}p"
-        ROOT_PARTITION="${part_prefix}${part_count}"
+
+        # Count existing partitions to determine new partition number
+        local existing_parts
+        existing_parts=$(lsblk -lno NAME "${TARGET_DISK}" 2>/dev/null | grep -cv "^$(basename "${TARGET_DISK}")$") || existing_parts=0
+        local new_part_num=$(( existing_parts + 1 ))
+        ROOT_PARTITION="${part_prefix}${new_part_num}"
+
+        # Find free space start: end of last partition
+        local free_start
+        free_start=$(parted -s "${TARGET_DISK}" unit MiB print free 2>/dev/null \
+            | awk '/Free Space/ {start=$1} END {print start}') || free_start=""
+        : "${free_start:=0MiB}"
+
+        disk_plan_add "Create NixOS root partition (${new_part_num})" \
+            parted -s "${TARGET_DISK}" mkpart "Linux filesystem" "${free_start}" "100%"
     fi
 
     case "${fs}" in

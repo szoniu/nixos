@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
 # hooks/after_install.sh.example — Runs after nixos-install
 # Rename to after_install.sh and chmod +x to activate.
+#
+# Available environment variables:
+#   All CONFIG_VARS (TARGET_DISK, FILESYSTEM, HOSTNAME, GPU_VENDOR, etc.)
+#   MOUNTPOINT, LOG_FILE, SCRIPT_DIR, CONFIG_FILE
+#   DRY_RUN, FORCE, NON_INTERACTIVE
+#
+# Example: Copy SSH keys to installed system
+# mkdir -p "${MOUNTPOINT}/home/${USERNAME}/.ssh"
+# cp /root/.ssh/authorized_keys "${MOUNTPOINT}/home/${USERNAME}/.ssh/" 2>/dev/null || true
+#
+# Example: Clone dotfiles
+# nixos-enter --root "${MOUNTPOINT}" -- \
+#     su - "${USERNAME}" -c "git clone https://github.com/user/dotfiles ~/.dotfiles"
+
 echo "after_install hook executed"

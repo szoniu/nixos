@@ -9,7 +9,9 @@ nvidia_generation() {
     local device_id="$1"
     local dec_id=$(( 16#${device_id} ))
 
-    if (( dec_id >= 0x2700 )); then
+    if (( dec_id >= 0x2900 )); then
+        echo "blackwell"
+    elif (( dec_id >= 0x2700 )); then
         echo "ada"
     elif (( dec_id >= 0x2200 )); then
         echo "ampere"
@@ -81,7 +83,7 @@ get_nvidia_open_recommendation() {
     gen=$(nvidia_generation "${device_id}")
 
     case "${gen}" in
-        ada)           echo "yes" ;;       # Ada+ — recommended
+        blackwell|ada) echo "yes" ;;       # Blackwell/Ada+ — recommended
         ampere|turing) echo "supported" ;; # Supported but not default
         *)             echo "no" ;;        # Not supported
     esac

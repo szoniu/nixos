@@ -28,12 +28,6 @@ Select additional applications below." || return "${TUI_ABORT}"
     DESKTOP_EXTRAS="${extras}"
     export DESKTOP_EXTRAS
 
-    # Extra toggles
-    dialog_yesno "Flatpak" "Enable Flatpak support?" && ENABLE_FLATPAK="yes" || ENABLE_FLATPAK="no"
-    dialog_yesno "Printing" "Enable printing support (CUPS)?" && ENABLE_PRINTING="yes" || ENABLE_PRINTING="no"
-    dialog_yesno "Bluetooth" "Enable Bluetooth support?" && ENABLE_BLUETOOTH="yes" || ENABLE_BLUETOOTH="no"
-    export ENABLE_FLATPAK ENABLE_PRINTING ENABLE_BLUETOOTH
-
     einfo "Desktop extras: ${DESKTOP_EXTRAS}"
     return "${TUI_NEXT}"
 }

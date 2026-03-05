@@ -71,6 +71,8 @@ tests/                  — test_config, test_disk, test_nixos_config, test_infe
 Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 - `_write_configuration_nix()` — główna funkcja, woła pod-generatory
 - `_nix_bootloader()` — systemd-boot, LUKS
+- `_nix_kernel()` — kernel package selection (latest/lts/zen)
+- `_nix_swap()` — zram swap configuration
 - `_nix_networking()` — hostname, NetworkManager, SSH
 - `_nix_locale()` — timezone, locale, keymap
 - `_nix_users()` — user z grupami
@@ -78,7 +80,7 @@ Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 - `_nix_gpu()` — NVIDIA (proprietary/open + PRIME offload), AMD (amdvlk), Intel
 - `_nix_audio()` — PipeWire
 - `_nix_packages()` — systemPackages z extras + extra_packages
-- `_nix_services()` — fwupd
+- `_nix_services()` — fwupd, asusd (ASUS ROG)
 - `_nix_peripherals()` — fprintd, bolt, iio-sensor-proxy, ModemManager
 - `_nix_settings()` — flakes, gc, allowUnfree
 
@@ -135,7 +137,8 @@ Configured via nix attributes in `_nix_peripherals()`:
 - `services.fprintd.enable = true` — fingerprint
 - `services.hardware.bolt.enable = true` — thunderbolt
 - `hardware.sensor.iio.enable = true` — IIO sensors
-- `networking.networkmanager.enableModemManager = true` — WWAN
+- `services.modemManager.enable = true` — WWAN
+- `services.asusd.enable = true` — ASUS ROG/TUF (via `_nix_services()`)
 
 Opt-in via checklist in `tui/extra_packages.sh` (visible only when hardware detected).
 
@@ -159,6 +162,8 @@ Checks: required variables, enum values (ENCRYPTION ∈ {none, luks}, FILESYSTEM
 
 ```
 HYBRID_GPU, IGPU_VENDOR, IGPU_DEVICE_NAME, DGPU_VENDOR, DGPU_DEVICE_NAME
+IGPU_BUS_ID, DGPU_BUS_ID
+GPU_DEVICE_NAME, GPU_DEVICE_ID
 ASUS_ROG_DETECTED, ENABLE_ASUSCTL, GPU_NVIDIA_OPEN
 BLUETOOTH_DETECTED, FINGERPRINT_DETECTED, ENABLE_FINGERPRINT
 THUNDERBOLT_DETECTED, ENABLE_THUNDERBOLT, SENSORS_DETECTED, ENABLE_SENSORS
@@ -177,6 +182,10 @@ bash tests/test_infer_config.sh    # Config inference from installed system
 bash tests/test_hybrid_gpu.sh      # Hybrid GPU + recommendation
 bash tests/test_validate.sh        # Config validation before install
 bash tests/test_peripherals.sh     # Peripheral detection + config vars
+bash tests/test_checkpoint.sh      # Checkpoint set/reached/validate/migrate
+bash tests/test_resume.sh          # Resume from disk detection
+bash tests/test_multiboot.sh       # Multi-OS serialize/deserialize
+bash tests/test_shrink.sh          # Partition shrink helpers
 ```
 
 ## Znane wzorce i pułapki

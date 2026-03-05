@@ -48,9 +48,16 @@ cleanup() {
     if { true >&4; } 2>/dev/null; then
         exec 2>&4; exec 4>&-
     fi
+    # Restore terminal echo (gum may have disabled it)
+    [[ "${_GUM_ECHO_OFF:-0}" == "1" ]] && stty echo </dev/tty 2>/dev/null || true
+    dd if=/dev/tty of=/dev/null bs=4096 count=100 iflag=nonblock 2>/dev/null || true
     if [[ ${rc} -ne 0 ]]; then
         eerror "Installer exited with code ${rc}"
         eerror "Log file: ${LOG_FILE}"
+    fi
+    # Unmount target disk if mounted
+    if mountpoint -q "${MOUNTPOINT:-/mnt}" 2>/dev/null; then
+        unmount_filesystems 2>/dev/null || true
     fi
     return ${rc}
 }
@@ -139,6 +146,12 @@ preflight_checks() {
 
 run_post_install() {
     einfo "=== Post-installation ==="
+
+    # Copy install log to target disk before unmounting
+    if [[ -f "${LOG_FILE}" ]] && mountpoint -q "${MOUNTPOINT}" 2>/dev/null; then
+        cp "${LOG_FILE}" "${MOUNTPOINT}/var/log/nixos-installer.log" 2>/dev/null || true
+    fi
+
     unmount_filesystems
 
     dialog_msgbox "Installation Complete" \
@@ -168,7 +181,6 @@ main() {
     case "${MODE}" in
         full)
             run_configuration_wizard
-            init_dialog
             screen_progress
             run_post_install
             ;;
@@ -177,6 +189,7 @@ main() {
             ;;
         install)
             config_load "${CONFIG_FILE}"
+            deserialize_detected_oses
             init_dialog
             screen_progress
             run_post_install
@@ -188,6 +201,7 @@ main() {
             case ${resume_rc} in
                 0)
                     config_load "${CONFIG_FILE}"
+                    deserialize_detected_oses
                     init_dialog
                     local completed_list="" cp_name
                     for cp_name in "${CHECKPOINTS[@]}"; do
@@ -232,7 +246,6 @@ main() {
                     dialog_msgbox "Resume: Nothing Found" \
                         "No previous installation data found.\n\nStarting full installation."
                     run_configuration_wizard
-                    init_dialog
                     screen_progress
                     run_post_install
                     ;;
