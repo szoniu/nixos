@@ -114,6 +114,9 @@ NIXHEAD
     # --- System packages ---
     _nix_packages
 
+    # --- Peripherals ---
+    _nix_peripherals
+
     # --- Services ---
     _nix_services
 
@@ -279,6 +282,20 @@ NIX
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };
 NIX
+
+            # Hybrid GPU: NVIDIA PRIME offload
+            if [[ "${HYBRID_GPU:-no}" == "yes" ]]; then
+                cat << 'NIX'
+
+  # Hybrid GPU: NVIDIA PRIME render offload
+  hardware.nvidia.prime = {
+    offload = {
+      enable = true;
+      enableOffloadCmd = true;
+    };
+  };
+NIX
+            fi
             ;;
         amd)
             cat << 'NIX'
@@ -303,6 +320,48 @@ NIX
     esac
 
     echo ""
+}
+
+_nix_peripherals() {
+    local has_peripherals=0
+
+    if [[ "${ENABLE_FINGERPRINT:-no}" == "yes" ]]; then
+        has_peripherals=1
+        cat << 'NIX'
+
+  # Fingerprint reader
+  services.fprintd.enable = true;
+NIX
+    fi
+
+    if [[ "${ENABLE_THUNDERBOLT:-no}" == "yes" ]]; then
+        has_peripherals=1
+        cat << 'NIX'
+
+  # Thunderbolt
+  services.hardware.bolt.enable = true;
+NIX
+    fi
+
+    if [[ "${ENABLE_SENSORS:-no}" == "yes" ]]; then
+        has_peripherals=1
+        cat << 'NIX'
+
+  # IIO sensor proxy (2-in-1 tablets)
+  hardware.sensor.iio.enable = true;
+NIX
+    fi
+
+    if [[ "${ENABLE_WWAN:-no}" == "yes" ]]; then
+        has_peripherals=1
+        cat << 'NIX'
+
+  # WWAN/LTE modem
+  networking.networkmanager.enableModemManager = true;
+NIX
+    fi
+
+    [[ ${has_peripherals} -eq 1 ]] && echo ""
 }
 
 _nix_audio() {

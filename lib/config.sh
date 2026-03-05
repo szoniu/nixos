@@ -4,44 +4,79 @@ source "${LIB_DIR}/protection.sh"
 
 config_save() {
     local file="${1:-${CONFIG_FILE}}"
-    mkdir -p "$(dirname "${file}")"
-    {
-        echo "#!/usr/bin/env bash"
-        echo "# NixOS TUI Installer configuration"
-        echo "# Generated: $(date -Iseconds)"
-        echo "# Version: ${INSTALLER_VERSION}"
-        echo ""
-        local var
-        for var in "${CONFIG_VARS[@]}"; do
-            [[ -n "${!var+x}" ]] && echo "${var}=${!var@Q}"
-        done
-    } > "${file}"
+    local dir
+    dir="$(dirname "${file}")"
+    mkdir -p "${dir}"
+
+    # Restrict permissions — file may contain sensitive data
+    (
+        umask 077
+        {
+            echo "#!/usr/bin/env bash"
+            echo "# NixOS TUI Installer configuration"
+            echo "# Generated: $(date -Iseconds)"
+            echo "# Version: ${INSTALLER_VERSION}"
+            echo ""
+
+            local var
+            for var in "${CONFIG_VARS[@]}"; do
+                if [[ -n "${!var+x}" ]]; then
+                    echo "${var}=${!var@Q}"
+                fi
+            done
+        } > "${file}"
+    )
+
     einfo "Configuration saved to ${file}"
 }
 
 config_load() {
     local file="${1:-${CONFIG_FILE}}"
-    [[ -f "${file}" ]] || { eerror "Config not found: ${file}"; return 1; }
+
+    if [[ ! -f "${file}" ]]; then
+        eerror "Configuration file not found: ${file}"
+        return 1
+    fi
+
+    # Build a filtered file with only known CONFIG_VARS assignments
+    local safe_file
+    safe_file=$(mktemp "${TMPDIR:-/tmp}/nixos-config-safe.XXXXXX")
 
     local line_num=0
     while IFS= read -r line; do
         (( line_num++ )) || true
-        [[ "${line}" =~ ^[[:space:]]*# ]] && continue
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        [[ "${line}" =~ ^#! ]] && continue
+        # Pass through comments and empty lines
+        if [[ "${line}" =~ ^[[:space:]]*# ]] || [[ "${line}" =~ ^[[:space:]]*$ ]] || [[ "${line}" =~ ^#! ]]; then
+            echo "${line}" >> "${safe_file}"
+            continue
+        fi
 
-        local var_name="${line%%=*}"
+        # Must be a known variable assignment
+        local var_name
+        var_name="${line%%=*}"
         var_name="${var_name%%[[:space:]]*}"
+
         local found=0
         local known_var
         for known_var in "${CONFIG_VARS[@]}"; do
-            [[ "${var_name}" == "${known_var}" ]] && { found=1; break; }
+            if [[ "${var_name}" == "${known_var}" ]]; then
+                found=1
+                break
+            fi
         done
-        [[ ${found} -eq 0 ]] && { ewarn "Unknown variable at line ${line_num}: ${var_name}"; continue; }
+
+        if [[ ${found} -eq 0 ]]; then
+            ewarn "Unknown variable at line ${line_num}: ${var_name} (skipping)"
+            continue
+        fi
+        echo "${line}" >> "${safe_file}"
     done < "${file}"
 
+    # Source the filtered file (only known variables)
     # shellcheck disable=SC1090
-    source "${file}"
+    source "${safe_file}"
+    rm -f "${safe_file}"
+
     einfo "Configuration loaded from ${file}"
 }
 
@@ -49,6 +84,20 @@ config_get() { echo "${!1:-}"; }
 
 config_set() {
     local var="$1" value="$2"
+
+    local found=0
+    local known_var
+    for known_var in "${CONFIG_VARS[@]}"; do
+        if [[ "${var}" == "${known_var}" ]]; then
+            found=1
+            break
+        fi
+    done
+
+    if [[ ${found} -eq 0 ]]; then
+        ewarn "Setting unknown config variable: ${var}"
+    fi
+
     printf -v "${var}" '%s' "${value}"
     export "${var}"
 }
@@ -58,4 +107,105 @@ config_dump() {
     for var in "${CONFIG_VARS[@]}"; do
         [[ -n "${!var+x}" ]] && echo "${var}=${!var@Q}"
     done
+}
+
+# validate_config — Check configuration consistency before installation
+# Prints error messages to stdout. Returns 0 if valid, 1 if errors found.
+validate_config() {
+    local -a errors=()
+
+    # --- Required variables (must be non-empty) ---
+    local -a required=(
+        TARGET_DISK FILESYSTEM HOSTNAME TIMEZONE
+        KERNEL_PACKAGE GPU_VENDOR USERNAME
+    )
+    local var
+    for var in "${required[@]}"; do
+        if [[ -z "${!var:-}" ]]; then
+            errors+=("${var} is required but not set")
+        fi
+    done
+
+    # --- Enum validation ---
+    if [[ -n "${PARTITION_SCHEME:-}" ]] && \
+       [[ "${PARTITION_SCHEME}" != "auto" && "${PARTITION_SCHEME}" != "dual-boot" && "${PARTITION_SCHEME}" != "manual" ]]; then
+        errors+=("PARTITION_SCHEME='${PARTITION_SCHEME}' — must be auto, dual-boot, or manual")
+    fi
+
+    if [[ -n "${FILESYSTEM:-}" ]] && \
+       [[ "${FILESYSTEM}" != "ext4" && "${FILESYSTEM}" != "btrfs" && "${FILESYSTEM}" != "xfs" ]]; then
+        errors+=("FILESYSTEM='${FILESYSTEM}' — must be ext4, btrfs, or xfs")
+    fi
+
+    if [[ -n "${SWAP_TYPE:-}" ]] && \
+       [[ "${SWAP_TYPE}" != "none" && "${SWAP_TYPE}" != "partition" && "${SWAP_TYPE}" != "file" ]]; then
+        errors+=("SWAP_TYPE='${SWAP_TYPE}' — must be none, partition, or file")
+    fi
+
+    if [[ -n "${GPU_VENDOR:-}" ]] && \
+       [[ "${GPU_VENDOR}" != "nvidia" && "${GPU_VENDOR}" != "amd" && "${GPU_VENDOR}" != "intel" && "${GPU_VENDOR}" != "none" && "${GPU_VENDOR}" != "unknown" ]]; then
+        errors+=("GPU_VENDOR='${GPU_VENDOR}' — must be nvidia, amd, intel, none, or unknown")
+    fi
+
+    if [[ -n "${ENCRYPTION:-}" ]] && \
+       [[ "${ENCRYPTION}" != "none" && "${ENCRYPTION}" != "luks" ]]; then
+        errors+=("ENCRYPTION='${ENCRYPTION}' — must be none or luks")
+    fi
+
+    # --- Format validation ---
+    # Hostname: RFC 1123
+    if [[ -n "${HOSTNAME:-}" ]] && \
+       [[ ! "${HOSTNAME}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]; then
+        errors+=("HOSTNAME='${HOSTNAME}' — invalid (RFC 1123: alphanumeric + hyphens, 1-63 chars)")
+    fi
+
+    # --- Block device checks (skip in DRY_RUN) ---
+    if [[ "${DRY_RUN:-0}" != "1" ]]; then
+        if [[ -n "${TARGET_DISK:-}" && "${PARTITION_SCHEME:-auto}" != "manual" ]] && \
+           [[ ! -b "${TARGET_DISK}" ]]; then
+            errors+=("TARGET_DISK='${TARGET_DISK}' — block device does not exist")
+        fi
+
+        if [[ "${PARTITION_SCHEME:-}" == "dual-boot" && "${ESP_REUSE:-no}" == "yes" ]] && \
+           [[ -n "${ESP_PARTITION:-}" && ! -b "${ESP_PARTITION}" ]]; then
+            errors+=("ESP_PARTITION='${ESP_PARTITION}' — block device does not exist")
+        fi
+
+        if [[ "${PARTITION_SCHEME:-}" == "dual-boot" ]] && \
+           [[ -n "${ROOT_PARTITION:-}" && ! -b "${ROOT_PARTITION}" ]]; then
+            errors+=("ROOT_PARTITION='${ROOT_PARTITION}' — block device does not exist")
+        fi
+    fi
+
+    # --- Cross-field logic ---
+    if [[ "${SWAP_TYPE:-}" == "partition" ]] && \
+       [[ -z "${SWAP_SIZE_MIB:-}" || "${SWAP_SIZE_MIB:-0}" -le 0 ]]; then
+        errors+=("SWAP_TYPE=partition requires SWAP_SIZE_MIB > 0")
+    fi
+
+    if [[ "${PARTITION_SCHEME:-}" == "dual-boot" ]] && \
+       [[ -z "${ESP_PARTITION:-}" ]]; then
+        errors+=("PARTITION_SCHEME=dual-boot requires ESP_PARTITION to be set")
+    fi
+
+    if [[ -n "${SHRINK_PARTITION:-}" ]]; then
+        if [[ -n "${SHRINK_PARTITION_FSTYPE:-}" ]] && \
+           [[ "${SHRINK_PARTITION_FSTYPE}" != "ntfs" && "${SHRINK_PARTITION_FSTYPE}" != "ext4" && "${SHRINK_PARTITION_FSTYPE}" != "btrfs" ]]; then
+            errors+=("SHRINK_PARTITION_FSTYPE='${SHRINK_PARTITION_FSTYPE}' — must be ntfs, ext4, or btrfs")
+        fi
+        if [[ -z "${SHRINK_NEW_SIZE_MIB:-}" || "${SHRINK_NEW_SIZE_MIB:-0}" -le 0 ]]; then
+            errors+=("SHRINK_PARTITION set requires SHRINK_NEW_SIZE_MIB > 0")
+        fi
+    fi
+
+    # --- Output ---
+    if [[ ${#errors[@]} -gt 0 ]]; then
+        local err
+        for err in "${errors[@]}"; do
+            echo "- ${err}"
+        done
+        return 1
+    fi
+
+    return 0
 }

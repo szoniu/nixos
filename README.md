@@ -121,7 +121,7 @@ sudo nixos-rebuild switch
 |---|-------|-------------------|
 | 1 | Welcome | Sprawdzenie wymagań (root, UEFI, sieć, nixos-install) |
 | 2 | Preset | Opcjonalne załadowanie gotowej konfiguracji |
-| 3 | Hardware | Podgląd wykrytego CPU, GPU, dysków, Windows |
+| 3 | Hardware | Podgląd wykrytego CPU, GPU (hybrid), dysków, peryferiów, Windows/Linux |
 | 4 | Channel | NixOS stable/unstable + Flakes |
 | 5 | Dysk | Wybór dysku + schemat (auto/dual-boot/manual) |
 | 6 | Filesystem | ext4 / btrfs / XFS + opcjonalne LUKS szyfrowanie |
@@ -132,7 +132,7 @@ sudo nixos-rebuild switch
 | 11 | GPU | NVIDIA (auto open-kernel) / AMD / Intel |
 | 12 | Desktop | KDE Plasma 6 + aplikacje + Flatpak/drukowanie/Bluetooth |
 | 13 | Użytkownicy | Root, user, grupy, SSH |
-| 14 | Pakiety | Dodatkowe pakiety nix |
+| 14 | Pakiety | Dodatkowe pakiety nix + opcje sprzętowe (fingerprint, Thunderbolt, itp.) |
 | 15 | Preset save | Eksport konfiguracji |
 | 16 | Podsumowanie | Przegląd + potwierdzenie YES |
 
@@ -143,11 +143,13 @@ Po potwierdzeniu installer:
 4. Uruchamia `nixos-install`
 5. Ustawia hasła
 
-## Dual-boot z Windows
+## Dual-boot z Windows/Linux
 
-- Auto-wykrywanie ESP z Windows Boot Manager
+- Auto-wykrywanie ESP z Windows Boot Manager i innych Linuksów
 - ESP nigdy nie jest formatowany
 - systemd-boot automatycznie widzi Windows
+- Wizard do zmniejszania partycji jeśli brak wolnego miejsca (NTFS, ext4, btrfs)
+- Ostrzeżenia o istniejących OS-ach na wybranych partycjach
 
 ## Presety
 
@@ -181,10 +183,13 @@ Presety przenośne — sprzęt re-wykrywany przy imporcie.
 ## Testy
 
 ```bash
-bash tests/test_config.sh          # Config round-trip (12 assertions)
-bash tests/test_disk.sh            # Disk planning (8 assertions)
-bash tests/test_nixos_config.sh    # configuration.nix generation (22 assertions)
-bash tests/test_infer_config.sh    # Config inference from installed system (36 assertions)
+bash tests/test_config.sh          # Config round-trip
+bash tests/test_disk.sh            # Disk planning
+bash tests/test_nixos_config.sh    # configuration.nix generation
+bash tests/test_infer_config.sh    # Config inference from installed system
+bash tests/test_hybrid_gpu.sh      # Hybrid GPU + recommendation
+bash tests/test_validate.sh        # Config validation before install
+bash tests/test_peripherals.sh     # Peripheral detection + config vars
 bash tests/shellcheck.sh           # Lint
 ```
 

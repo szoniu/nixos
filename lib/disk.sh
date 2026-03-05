@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# disk.sh — Two-phase disk operations (plan -> execute), UUID persistence
+# disk.sh — Two-phase disk operations (plan -> execute), UUID persistence, shrink helpers
 source "${LIB_DIR}/protection.sh"
 
 declare -ga DISK_ACTIONS=()
@@ -92,6 +92,11 @@ disk_plan_dualboot() {
     disk_plan_reset
 
     einfo "Reusing existing ESP: ${ESP_PARTITION}"
+
+    # Shrink step (if configured)
+    if [[ -n "${SHRINK_PARTITION:-}" ]]; then
+        disk_plan_shrink
+    fi
 
     if [[ -z "${ROOT_PARTITION:-}" ]]; then
         local part_count
@@ -199,3 +204,141 @@ unmount_filesystems() {
 
 get_uuid()     { blkid -s UUID -o value "$1" 2>/dev/null; }
 get_partuuid() { blkid -s PARTUUID -o value "$1" 2>/dev/null; }
+
+# --- Shrink helpers ---
+
+# disk_get_free_space_mib — Get free (unpartitioned) space on a disk
+disk_get_free_space_mib() {
+    local disk="$1"
+
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "0"
+        return 0
+    fi
+
+    local total_free=0
+    local size_str
+    while IFS= read -r size_str; do
+        [[ -z "${size_str}" ]] && continue
+        local mib="${size_str%%MiB*}"
+        mib="${mib%%.*}"
+        [[ "${mib}" =~ ^[0-9]+$ ]] && (( total_free += mib )) || true
+    done < <(parted -s "${disk}" unit MiB print free 2>/dev/null | awk '/Free Space/ {print $3}' || true)
+
+    echo "${total_free}"
+}
+
+# disk_get_partition_size_mib — Get size of a partition in MiB
+disk_get_partition_size_mib() {
+    local part="$1"
+    local size_bytes
+    size_bytes=$(lsblk -bno SIZE "${part}" 2>/dev/null | head -1) || true
+    [[ -z "${size_bytes}" ]] && { echo "0"; return; }
+    echo "$(( size_bytes / 1048576 ))"
+}
+
+# disk_get_partition_used_mib — Get used space on a partition
+disk_get_partition_used_mib() {
+    local part="$1" fstype="$2"
+
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "0"
+        return 0
+    fi
+
+    case "${fstype}" in
+        ntfs)
+            if command -v ntfsresize &>/dev/null; then
+                local min_bytes
+                min_bytes=$(ntfsresize --info --force --no-progress-bar "${part}" 2>/dev/null \
+                    | grep -i 'resize at' | sed 's/.*: *//; s/ bytes.*//' | tr -d ' ') || true
+                if [[ -n "${min_bytes}" && "${min_bytes}" =~ ^[0-9]+$ ]]; then
+                    echo "$(( min_bytes / 1048576 ))"
+                    return
+                fi
+            fi
+            echo "0"
+            ;;
+        ext4)
+            if command -v dumpe2fs &>/dev/null; then
+                local block_size free_blocks block_count
+                local dump_out
+                dump_out=$(dumpe2fs -h "${part}" 2>/dev/null) || true
+                block_size=$(echo "${dump_out}" | sed -n 's/^Block size: *//p') || true
+                block_count=$(echo "${dump_out}" | sed -n 's/^Block count: *//p') || true
+                free_blocks=$(echo "${dump_out}" | sed -n 's/^Free blocks: *//p') || true
+                if [[ -n "${block_size}" && -n "${block_count}" && -n "${free_blocks}" ]]; then
+                    local used_blocks=$(( block_count - free_blocks ))
+                    echo "$(( used_blocks * block_size / 1048576 ))"
+                    return
+                fi
+            fi
+            echo "0"
+            ;;
+        btrfs)
+            local tmp_mp
+            tmp_mp=$(mktemp -d /tmp/btrfs-check-XXXXXX)
+            if mount -o ro "${part}" "${tmp_mp}" 2>/dev/null; then
+                local used_bytes
+                used_bytes=$(btrfs filesystem usage -b "${tmp_mp}" 2>/dev/null \
+                    | sed -n 's/.*Used: *//p' | head -1) || true
+                umount "${tmp_mp}" 2>/dev/null || true
+                rmdir "${tmp_mp}" 2>/dev/null || true
+                if [[ -n "${used_bytes}" && "${used_bytes}" =~ ^[0-9]+$ ]]; then
+                    echo "$(( used_bytes / 1048576 ))"
+                    return
+                fi
+            fi
+            rmdir "${tmp_mp}" 2>/dev/null || true
+            echo "0"
+            ;;
+        *)
+            echo "0"
+            ;;
+    esac
+}
+
+# disk_can_shrink_fstype — Check if a filesystem type supports shrinking
+disk_can_shrink_fstype() {
+    local fstype="$1"
+    case "${fstype}" in
+        ntfs|ext4|btrfs) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# disk_plan_shrink — Add shrink operations to the disk plan
+# Uses parted resizepart (NixOS installer uses parted)
+disk_plan_shrink() {
+    local part="${SHRINK_PARTITION}"
+    local fstype="${SHRINK_PARTITION_FSTYPE}"
+    local new_size_mib="${SHRINK_NEW_SIZE_MIB}"
+
+    einfo "Planning shrink: ${part} (${fstype}) -> ${new_size_mib} MiB"
+
+    # Step 1: Shrink the filesystem
+    case "${fstype}" in
+        ntfs)
+            disk_plan_add "Shrink NTFS filesystem on ${part}" \
+                ntfsresize --force --no-progress-bar --size "${new_size_mib}M" "${part}"
+            ;;
+        ext4)
+            disk_plan_add "Check ext4 filesystem on ${part}" \
+                e2fsck -f -y "${part}"
+            disk_plan_add "Shrink ext4 filesystem on ${part}" \
+                resize2fs "${part}" "${new_size_mib}M"
+            ;;
+        btrfs)
+            disk_plan_add "Shrink btrfs filesystem on ${part}" \
+                bash -c "tmp=\$(mktemp -d /tmp/btrfs-shrink-XXXXXX) && mount '${part}' \"\${tmp}\" && btrfs filesystem resize '${new_size_mib}m' \"\${tmp}\"; umount \"\${tmp}\"; rmdir \"\${tmp}\""
+            ;;
+    esac
+
+    # Step 2: Shrink the partition (parted resizepart)
+    local disk="${TARGET_DISK}"
+    local part_num
+    part_num=$(echo "${part}" | sed 's/.*[^0-9]//')
+
+    disk_plan_add "Resize partition ${part} to ${new_size_mib} MiB" \
+        parted -s "${disk}" resizepart "${part_num}" "${new_size_mib}MiB"
+}
