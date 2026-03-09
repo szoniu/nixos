@@ -68,6 +68,10 @@ screen_progress() {
     local total=${#INSTALL_PHASES[@]}
     local i=0
 
+    if checkpoint_reached "disks" && ! mountpoint -q "${MOUNTPOINT}" 2>/dev/null; then
+        mount_filesystems 2>/dev/null || true
+    fi
+
     if ! _detect_and_handle_resume; then
         einfo "Starting fresh installation"
     else

@@ -21,6 +21,27 @@ disk_plan_show() {
     done
 }
 
+_plan_luks_setup() {
+    local part="$1"
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        disk_plan_add "Setup LUKS encryption on ${part}" \
+            bash -c "echo '[DRY-RUN] Would setup LUKS on ${part}'"
+        return 0
+    fi
+    local current_type
+    current_type=$(blkid -s TYPE -o value "${part}" 2>/dev/null) || true
+    if [[ "${current_type}" == "crypto_LUKS" ]]; then
+        einfo "Partition ${part} already has LUKS — skipping luksFormat"
+        disk_plan_add "Open existing LUKS partition ${part}" \
+            bash -c "if [ -b /dev/mapper/cryptroot ]; then echo 'LUKS already open'; else cryptsetup open '${part}' cryptroot; fi"
+    else
+        disk_plan_add "Setup LUKS encryption on ${part}" \
+            cryptsetup luksFormat --type luks2 "${part}"
+        disk_plan_add "Open LUKS partition" \
+            cryptsetup open "${part}" cryptroot
+    fi
+}
+
 disk_plan_auto() {
     local disk="${TARGET_DISK}"
     local fs="${FILESYSTEM:-ext4}"
@@ -66,12 +87,8 @@ disk_plan_auto() {
     ROOT_PARTITION="${part_prefix}${part_num}"
 
     if [[ "${ENCRYPTION:-none}" == "luks" ]]; then
-        # Wrap root in LUKS
         LUKS_PARTITION="${ROOT_PARTITION}"
-        disk_plan_add "LUKS encrypt root partition" \
-            cryptsetup luksFormat --type luks2 "${LUKS_PARTITION}"
-        disk_plan_add "Open LUKS device" \
-            cryptsetup open "${LUKS_PARTITION}" cryptroot
+        _plan_luks_setup "${ROOT_PARTITION}"
         ROOT_PARTITION="/dev/mapper/cryptroot"
     fi
 

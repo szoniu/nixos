@@ -11,8 +11,13 @@ screen_preset_load() {
     case "${choice}" in
         skip) return "${TUI_NEXT}" ;;
         file)
+            local default_preset=""
+            local latest
+            latest=$(ls -t "${SCRIPT_DIR}/presets/"custom-*.conf /root/nixos-preset*.conf 2>/dev/null | head -1) || true
+            [[ -n "${latest}" ]] && default_preset="${latest}"
+            : "${default_preset:=${SCRIPT_DIR}/presets/custom.conf}"
             local file
-            file=$(dialog_inputbox "Preset File" "Enter path to preset:" "/root/nixos-preset.conf") || return "${TUI_BACK}"
+            file=$(dialog_inputbox "Preset File" "Enter path to preset:" "${default_preset}") || return "${TUI_BACK}"
             [[ -f "${file}" ]] || { dialog_msgbox "Error" "File not found: ${file}"; return "${TUI_BACK}"; }
             preset_import "${file}"
             dialog_msgbox "Loaded" "Preset loaded. Hardware values will be re-detected."
