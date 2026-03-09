@@ -30,7 +30,7 @@ lib/
 ├── logging.sh          — elog/einfo/ewarn/eerror/die/die_trace
 ├── utils.sh            — try (interactive recovery, text fallback, LIVE_OUTPUT via tee), checkpoint_set/reached/validate/migrate_to_target, cleanup_target_disk, try_resume_from_disk, infer_config_from_partition, is_root/is_efi/has_network
 ├── dialog.sh           — Wrapper gum/dialog/whiptail, primitives, wizard runner, bundled gum extraction
-├── config.sh           — config_save/load/set/get (${VAR@Q}), validate_config()
+├── config.sh           — config_save/load/set/get/dump (${VAR@Q}), validate_config()
 ├── hardware.sh         — detect_cpu/gpu(multi-GPU/hybrid)/disks/esp/installed_oses, detect_asus_rog, detect_bluetooth/fingerprint/thunderbolt/sensors/webcam/wwan, serialize/deserialize_detected_oses
 ├── disk.sh             — Dwufazowe: disk_plan_add/add_stdin/show/auto/dualboot → cleanup_target_disk + disk_execute_plan (sfdisk), mount/unmount_filesystems, get_uuid/get_partuuid, shrink helpers (disk_plan_shrink)
 ├── nixos_config.sh     — KLUCZOWY: generate_nixos_config(), _write_configuration_nix(), _nix_peripherals()
@@ -63,7 +63,7 @@ data/                   — Static databases + bundled assets
 
 presets/                — desktop-nvidia.conf, desktop-amd.conf, desktop-intel-encrypted.conf
 hooks/                  — *.sh.example
-tests/                  — test_config, test_disk, test_nixos_config, test_infer_config, shellcheck
+tests/                  — shellcheck, test_checkpoint, test_config, test_disk, test_hybrid_gpu, test_infer_config, test_multiboot, test_nixos_config, test_peripherals, test_resume, test_shrink, test_validate
 ```
 
 ### lib/nixos_config.sh — najważniejszy moduł
@@ -158,13 +158,29 @@ When dual-boot selected and not enough free space, `_shrink_wizard()` in `tui/di
 `validate_config()` in `lib/config.sh` — validates config BEFORE install. Called at entry to `screen_summary()`.
 Checks: required variables, enum values (ENCRYPTION ∈ {none, luks}, FILESYSTEM ∈ {ext4, btrfs, xfs}), hostname RFC 1123, block device existence, cross-field consistency.
 
-### New CONFIG_VARS
+### Core CONFIG_VARS
+
+```
+NIXOS_CHANNEL, USE_FLAKES
+TARGET_DISK, PARTITION_SCHEME, FILESYSTEM, BTRFS_SUBVOLUMES
+ENCRYPTION, LUKS_PARTITION
+SWAP_TYPE, SWAP_SIZE_MIB
+HOSTNAME, TIMEZONE, LOCALE, KEYMAP
+KERNEL_PACKAGE
+GPU_VENDOR, GPU_DRIVER, GPU_NVIDIA_OPEN, GPU_DEVICE_NAME, GPU_DEVICE_ID
+DESKTOP_EXTRAS
+ROOT_PASSWORD_SET, USERNAME, USER_PASSWORD_SET, USER_GROUPS
+ENABLE_SSH, ENABLE_FLATPAK, ENABLE_PRINTING, ENABLE_BLUETOOTH
+EXTRA_PACKAGES
+ESP_PARTITION, ESP_REUSE, ROOT_PARTITION, SWAP_PARTITION
+```
+
+### Extended CONFIG_VARS (hardware detection)
 
 ```
 HYBRID_GPU, IGPU_VENDOR, IGPU_DEVICE_NAME, DGPU_VENDOR, DGPU_DEVICE_NAME
 IGPU_BUS_ID, DGPU_BUS_ID
-GPU_DEVICE_NAME, GPU_DEVICE_ID
-ASUS_ROG_DETECTED, ENABLE_ASUSCTL, GPU_NVIDIA_OPEN
+ASUS_ROG_DETECTED, ENABLE_ASUSCTL
 BLUETOOTH_DETECTED, FINGERPRINT_DETECTED, ENABLE_FINGERPRINT
 THUNDERBOLT_DETECTED, ENABLE_THUNDERBOLT, SENSORS_DETECTED, ENABLE_SENSORS
 WEBCAM_DETECTED, WWAN_DETECTED, ENABLE_WWAN

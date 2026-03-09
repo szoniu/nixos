@@ -20,7 +20,7 @@ screen_preset_load() {
             file=$(dialog_inputbox "Preset File" "Enter path to preset:" "${default_preset}") || return "${TUI_BACK}"
             [[ -f "${file}" ]] || { dialog_msgbox "Error" "File not found: ${file}"; return "${TUI_BACK}"; }
             preset_import "${file}"
-            dialog_msgbox "Loaded" "Preset loaded. Hardware values will be re-detected."
+            _preset_ask_skip
             return "${TUI_NEXT}" ;;
         browse)
             local -a presets=()
@@ -32,7 +32,19 @@ screen_preset_load() {
             local selected
             selected=$(dialog_menu "Select Preset" "${presets[@]}") || return "${TUI_BACK}"
             preset_import "${selected}"
-            dialog_msgbox "Loaded" "Preset: $(basename "${selected}")"
+            _preset_ask_skip
             return "${TUI_NEXT}" ;;
     esac
+}
+
+# _preset_ask_skip — Ask user whether to skip config screens after preset load
+_preset_ask_skip() {
+    local skip_rc=0
+    dialog_yesno "Preset Loaded" \
+        "Preset loaded successfully.\n\nSkip to summary? (You'll still select disk.)\n\nChoose 'No' to review all settings." \
+        || skip_rc=$?
+    if [[ ${skip_rc} -eq 0 ]]; then
+        _PRESET_SKIP_TO_USER=1
+        export _PRESET_SKIP_TO_USER
+    fi
 }

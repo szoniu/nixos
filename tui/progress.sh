@@ -69,6 +69,13 @@ screen_progress() {
     local i=0
 
     if checkpoint_reached "disks" && ! mountpoint -q "${MOUNTPOINT}" 2>/dev/null; then
+        # Re-open LUKS container if needed (closed after reboot/resume)
+        if [[ "${ENCRYPTION:-none}" == "luks" ]] && [[ ! -b /dev/mapper/cryptroot ]]; then
+            if [[ -n "${LUKS_PARTITION:-}" ]] && command -v cryptsetup &>/dev/null; then
+                ewarn "LUKS container not open — prompting for passphrase"
+                cryptsetup open "${LUKS_PARTITION}" cryptroot </dev/tty
+            fi
+        fi
         mount_filesystems 2>/dev/null || true
     fi
 
@@ -90,6 +97,13 @@ screen_progress() {
             einfo "Phase ${phase_name} already completed (checkpoint)"
             if [[ "${phase_name}" == "disks" ]]; then
                 exec 2>&4
+                # Re-open LUKS container if needed (closed after reboot/resume)
+                if [[ "${ENCRYPTION:-none}" == "luks" ]] && [[ ! -b /dev/mapper/cryptroot ]]; then
+                    if [[ -n "${LUKS_PARTITION:-}" ]] && command -v cryptsetup &>/dev/null; then
+                        ewarn "LUKS container not open — prompting for passphrase"
+                        cryptsetup open "${LUKS_PARTITION}" cryptroot </dev/tty
+                    fi
+                fi
                 mount_filesystems
                 checkpoint_migrate_to_target
                 _save_config_to_target

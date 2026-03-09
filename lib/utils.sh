@@ -199,7 +199,22 @@ cleanup_target_disk() {
         backing=$(cryptsetup status cryptroot 2>/dev/null | awk '/device:/ {print $2}') || true
         if [[ "${backing}" == "${disk}"* ]]; then
             ewarn "Closing LUKS on cryptroot"
-            cryptsetup close cryptroot 2>/dev/null || true
+            # First unmount anything under MOUNTPOINT that may hold the device open
+            local _mp
+            while IFS=' ' read -r _ _mp _; do
+                [[ "${_mp}" == "${MOUNTPOINT}"* ]] || continue
+                umount -l "${_mp}" 2>/dev/null || true
+            done < <(awk '{print $1, $2}' /proc/mounts 2>/dev/null | sort -k2 -r || true)
+            # Try closing; if busy, kill processes and retry
+            if ! cryptsetup close cryptroot 2>/dev/null; then
+                ewarn "LUKS close failed — killing processes using /dev/mapper/cryptroot"
+                fuser -km /dev/mapper/cryptroot 2>/dev/null || true
+                sleep 1
+                if ! cryptsetup close cryptroot 2>/dev/null; then
+                    ewarn "LUKS close still failed — forcing dmsetup remove"
+                    dmsetup remove --force cryptroot 2>/dev/null || true
+                fi
+            fi
         fi
     fi
 }
