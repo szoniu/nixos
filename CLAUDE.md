@@ -32,7 +32,7 @@ lib/
 ├── dialog.sh           — Wrapper gum/dialog/whiptail, primitives, wizard runner, bundled gum extraction
 ├── config.sh           — config_save/load/set/get (${VAR@Q}), validate_config()
 ├── hardware.sh         — detect_cpu/gpu(multi-GPU/hybrid)/disks/esp/installed_oses, detect_asus_rog, detect_bluetooth/fingerprint/thunderbolt/sensors/webcam/wwan, serialize/deserialize_detected_oses
-├── disk.sh             — Dwufazowe: plan → cleanup_target_disk + execute, mount/unmount, LUKS support, shrink helpers (disk_plan_shrink via parted)
+├── disk.sh             — Dwufazowe: disk_plan_add/add_stdin/show/auto/dualboot → cleanup_target_disk + disk_execute_plan (sfdisk), mount/unmount_filesystems, get_uuid/get_partuuid, shrink helpers (disk_plan_shrink)
 ├── nixos_config.sh     — KLUCZOWY: generate_nixos_config(), _write_configuration_nix(), _nix_peripherals()
 ├── hooks.sh            — maybe_exec 'before_X' / 'after_X'
 └── preset.sh           — preset_export/import (hardware overlay)
@@ -151,7 +151,7 @@ Opt-in via checklist in `tui/extra_packages.sh` (visible only when hardware dete
 When dual-boot selected and not enough free space, `_shrink_wizard()` in `tui/disk_select.sh` offers to shrink an existing partition:
 - Supported: NTFS, ext4, btrfs (XFS cannot be shrunk)
 - Safety: 1 GiB margin, minimum NIXOS_MIN_SIZE_MIB (10 GiB)
-- Helpers in `lib/disk.sh`: `disk_get_free_space_mib()`, `disk_plan_shrink()` (uses `parted resizepart`)
+- Helpers in `lib/disk.sh`: `disk_get_free_space_mib()` (uses `sfdisk --list-free`), `disk_plan_shrink()` (uses `sfdisk -N` for partition resize)
 
 ### Config validation
 
