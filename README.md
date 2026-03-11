@@ -434,3 +434,40 @@ Installer automatycznie użyje `dialog` lub `whiptail` jako fallback. Możesz te
 
 **P: Mam laptopa ASUS ROG/TUF — czy installer to wspiera?**
 Tak. Installer automatycznie wykrywa hardware ASUS ROG/TUF przez DMI i oferuje instalację `asusd` (asusctl) do zarządzania podświetleniem, trybami wydajności i profilami GPU.
+
+**P: Mam multi-boot (kilka Linuxów). Po aktualizacji kernela inne systemy zniknęły z menu boot.**
+Jeśli używasz **GRUB** (wybierany w wizardzie dla multi-boot), odśwież konfigurację:
+
+```bash
+sudo nixos-rebuild switch
+```
+
+NixOS z `boot.loader.grub.useOSProber = true` automatycznie wykryje inne systemy przy każdym `nixos-rebuild`.
+
+Jeśli używasz **systemd-boot** — nie wykrywa innych Linuxów. Przełącz na GRUB w `/etc/nixos/configuration.nix`:
+
+```nix
+boot.loader.systemd-boot.enable = false;
+boot.loader.grub.enable = true;
+boot.loader.grub.device = "nodev";
+boot.loader.grub.efiSupport = true;
+boot.loader.grub.useOSProber = true;
+```
+
+Potem: `sudo nixos-rebuild switch`.
+
+**P: Zapomniałem odświeżyć GRUB i po restarcie nie widzę innych systemów.**
+Systemy dalej są na dysku — nic nie zostało usunięte. Wystarczy:
+
+1. Uruchom dowolny z widocznych systemów
+2. Uruchom `sudo grub-mkconfig -o /boot/grub/grub.cfg` (lub `sudo nixos-rebuild switch` z NixOS)
+3. Restart — wszystkie systemy powinny być widoczne
+
+Jeśli żaden system nie startuje (uszkodzony GRUB), boot z Live USB i napraw z chroot:
+
+```bash
+mount /dev/<root-partycja> /mnt
+mount /dev/<esp> /mnt/boot
+mount --rbind /dev /mnt/dev && mount --rbind /sys /mnt/sys && mount -t proc /proc /mnt/proc
+chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+```
