@@ -171,11 +171,22 @@ NIX
 }
 
 _nix_bootloader() {
-    cat << 'NIX'
+    if [[ "${BOOTLOADER_TYPE:-systemd-boot}" == "grub" ]]; then
+        cat << 'NIX'
+  # --- Bootloader (GRUB — multi-boot support) ---
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "nodev";
+  boot.loader.grub.efiSupport = true;
+  boot.loader.grub.useOSProber = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+NIX
+    else
+        cat << 'NIX'
   # --- Bootloader ---
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 NIX
+    fi
 
     if [[ "${ENCRYPTION:-none}" == "luks" ]]; then
         local luks_uuid

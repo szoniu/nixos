@@ -38,6 +38,7 @@ source "${TUI_DIR}/gpu_config.sh"
 source "${TUI_DIR}/desktop_config.sh"
 source "${TUI_DIR}/user_config.sh"
 source "${TUI_DIR}/extra_packages.sh"
+source "${TUI_DIR}/bootloader_select.sh"
 source "${TUI_DIR}/preset_save.sh"
 source "${TUI_DIR}/summary.sh"
 source "${TUI_DIR}/progress.sh"
@@ -127,6 +128,7 @@ run_configuration_wizard() {
         screen_desktop_config \
         screen_user_config \
         screen_extra_packages \
+        screen_bootloader_select \
         screen_preset_save \
         screen_summary
     run_wizard

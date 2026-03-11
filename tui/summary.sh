@@ -28,6 +28,7 @@ screen_summary() {
     s+="Locale:       ${LOCALE:-en_US.UTF-8}\n"
     s+="Keymap:       ${KEYMAP:-us}\n\n"
     s+="Kernel:       ${KERNEL_PACKAGE:-default}\n"
+    s+="Bootloader:   ${BOOTLOADER_TYPE:-systemd-boot}\n"
 
     if [[ "${HYBRID_GPU:-no}" == "yes" ]]; then
         s+="GPU:          ${IGPU_VENDOR:-?} + ${DGPU_DEVICE_NAME:-?} (hybrid)\n"
