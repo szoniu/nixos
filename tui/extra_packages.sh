@@ -34,6 +34,9 @@ screen_extra_packages() {
         items+=("asusctl" "ASUS ROG/TUF laptop support (asusd)" "on")
     fi
 
+    # Hyprland ecosystem — standalone Wayland desktop
+    items+=("hyprland-ecosystem" "Hyprland + ekosystem (waybar, wofi, mako, grim...)" "$( [[ "${ENABLE_HYPRLAND:-no}" == "yes" ]] && echo "on" || echo "off" )")
+
     # Services toggles
     items+=("flatpak"   "Flatpak app store"   "$( [[ "${ENABLE_FLATPAK:-no}" == "yes" ]] && echo "on" || echo "off" )")
     items+=("printing"  "CUPS printing"       "$( [[ "${ENABLE_PRINTING:-no}" == "yes" ]] && echo "on" || echo "off" )")
@@ -44,6 +47,7 @@ screen_extra_packages() {
         || return "${TUI_BACK}"
 
     # Parse selections
+    ENABLE_HYPRLAND="no"
     ENABLE_FLATPAK="no"
     ENABLE_PRINTING="no"
     ENABLE_BLUETOOTH="no"
@@ -57,6 +61,7 @@ screen_extra_packages() {
     local pkg
     for pkg in ${selected}; do
         case "${pkg}" in
+            hyprland-ecosystem) ENABLE_HYPRLAND="yes" ;;
             flatpak)           ENABLE_FLATPAK="yes" ;;
             printing)          ENABLE_PRINTING="yes" ;;
             bluetooth)         ENABLE_BLUETOOTH="yes" ;;
@@ -82,10 +87,11 @@ Leave empty to skip:" \
     [[ -n "${more_pkgs}" ]] && all_extras+=" ${more_pkgs}"
     EXTRA_PACKAGES="${all_extras## }"
 
-    export ENABLE_FLATPAK ENABLE_PRINTING ENABLE_BLUETOOTH
+    export ENABLE_HYPRLAND ENABLE_FLATPAK ENABLE_PRINTING ENABLE_BLUETOOTH
     export ENABLE_FINGERPRINT ENABLE_THUNDERBOLT ENABLE_SENSORS ENABLE_WWAN ENABLE_ASUSCTL
     export EXTRA_PACKAGES
 
+    [[ "${ENABLE_HYPRLAND}" == "yes" ]] && einfo "Hyprland ecosystem: enabled"
     einfo "Extras: flatpak=${ENABLE_FLATPAK}, printing=${ENABLE_PRINTING}, bluetooth=${ENABLE_BLUETOOTH}"
     [[ "${ENABLE_FINGERPRINT}" == "yes" ]] && einfo "Fingerprint: enabled"
     [[ "${ENABLE_THUNDERBOLT}" == "yes" ]] && einfo "Thunderbolt: enabled"

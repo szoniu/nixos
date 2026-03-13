@@ -111,6 +111,9 @@ NIXHEAD
     # --- Desktop ---
     _nix_desktop
 
+    # --- Hyprland ecosystem ---
+    _nix_hyprland
+
     # --- GPU ---
     _nix_gpu
 
@@ -263,6 +266,21 @@ ${nix_groups}
   };
 NIX
     fi
+
+    echo ""
+}
+
+_nix_hyprland() {
+    if [[ "${ENABLE_HYPRLAND:-no}" != "yes" ]]; then
+        return 0
+    fi
+    cat << 'NIX'
+  # --- Hyprland ecosystem ---
+  programs.hyprland = {
+    enable = true;
+    xwayland.enable = true;
+  };
+NIX
 
     echo ""
 }
@@ -449,6 +467,23 @@ _nix_packages() {
     pciutils
     usbutils
 NIX
+
+    # Hyprland ecosystem packages
+    if [[ "${ENABLE_HYPRLAND:-no}" == "yes" ]]; then
+        cat << 'NIX'
+    # Hyprland ecosystem
+    hyprpaper
+    hypridle
+    hyprlock
+    waybar
+    wofi
+    mako
+    grim
+    slurp
+    wl-clipboard
+    brightnessctl
+NIX
+    fi
 
     # Desktop extras
     local extras="${DESKTOP_EXTRAS:-}"
