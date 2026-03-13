@@ -70,7 +70,7 @@ tests/                  — shellcheck, test_checkpoint, test_config, test_disk,
 
 Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 - `_write_configuration_nix()` — główna funkcja, woła pod-generatory
-- `_nix_bootloader()` — systemd-boot, LUKS
+- `_nix_bootloader()` — systemd-boot lub GRUB (multi-boot), LUKS
 - `_nix_kernel()` — kernel package selection (latest/lts/zen)
 - `_nix_swap()` — zram swap configuration
 - `_nix_networking()` — hostname, NetworkManager, SSH
@@ -80,6 +80,7 @@ Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 - `_nix_gpu()` — NVIDIA (proprietary/open + PRIME offload), AMD (amdvlk), Intel
 - `_nix_audio()` — PipeWire
 - `_nix_packages()` — systemPackages z extras + extra_packages
+- `_nix_hyprland()` — Hyprland ecosystem (`programs.hyprland.enable`, xwayland)
 - `_nix_services()` — fwupd, asusd (ASUS ROG)
 - `_nix_peripherals()` — fprintd, bolt, iio-sensor-proxy, ModemManager
 - `_nix_settings()` — flakes, gc, allowUnfree
@@ -94,6 +95,21 @@ Ten moduł generuje `configuration.nix` z wyborów TUI. Składa się z:
 - `_NIXOS_INSTALLER` — guard w protection.sh
 - `--resume` — `try_resume_from_disk()` skanuje partycje, zwraca 0/1/2
 - Config inference — `infer_config_from_partition()` odczytuje fstab, hostname, timezone, keymap, crypttab
+
+### Hyprland Ecosystem (lib/nixos_config.sh)
+
+`_nix_hyprland()` — generuje sekcję Hyprland w configuration.nix gdy `ENABLE_HYPRLAND=yes`:
+- `programs.hyprland = { enable = true; xwayland.enable = true; };`
+- Pakiety ekosystemu dodawane warunkowo w `_nix_packages()`: hyprpaper, hypridle, hyprlock, waybar, wofi, mako, grim, slurp, wl-clipboard, brightnessctl
+- Opcja w `tui/extra_packages.sh` (tylko gdy desktop)
+
+### GRUB Bootloader (multi-boot)
+
+`BOOTLOADER_TYPE` — `systemd-boot` (domyślny) lub `grub`:
+- `_nix_bootloader()` generuje odpowiednią konfigurację
+- GRUB: `boot.loader.grub.enable = true; boot.loader.grub.useOSProber = true;` — automatycznie wykrywa Windows i inne Linuxy
+- Przydatne dla dual-boot/multi-boot (systemd-boot nie widzi innych OS-ów)
+- Ekran TUI "Bootloader" w wizardzie (między locale a kernel)
 
 ### Różnice vs Gentoo installer
 
@@ -161,7 +177,7 @@ Checks: required variables, enum values (ENCRYPTION ∈ {none, luks}, FILESYSTEM
 ### Core CONFIG_VARS
 
 ```
-NIXOS_CHANNEL, USE_FLAKES
+NIXOS_CHANNEL, USE_FLAKES, BOOTLOADER_TYPE
 TARGET_DISK, PARTITION_SCHEME, FILESYSTEM, BTRFS_SUBVOLUMES
 ENCRYPTION, LUKS_PARTITION
 SWAP_TYPE, SWAP_SIZE_MIB
@@ -171,6 +187,7 @@ GPU_VENDOR, GPU_DRIVER, GPU_NVIDIA_OPEN, GPU_DEVICE_NAME, GPU_DEVICE_ID
 DESKTOP_EXTRAS
 ROOT_PASSWORD_SET, USERNAME, USER_PASSWORD_SET, USER_GROUPS
 ENABLE_SSH, ENABLE_FLATPAK, ENABLE_PRINTING, ENABLE_BLUETOOTH
+ENABLE_HYPRLAND
 EXTRA_PACKAGES
 ESP_PARTITION, ESP_REUSE, ROOT_PARTITION, SWAP_PARTITION
 ```

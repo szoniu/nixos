@@ -134,13 +134,14 @@ sudo nixos-rebuild switch
 | 7 | Swap | zram / partycja / brak |
 | 8 | Sieć | Hostname |
 | 9 | Locale | Timezone, język, keymap |
-| 10 | Kernel | Default / Latest / LTS / Zen |
-| 11 | GPU | NVIDIA (auto open-kernel) / AMD / Intel |
-| 12 | Desktop | KDE Plasma 6 + aplikacje + Flatpak/drukowanie/Bluetooth |
-| 13 | Użytkownicy | Root, user, grupy, SSH |
-| 14 | Pakiety | Dodatkowe pakiety nix + opcje sprzętowe (fingerprint, Thunderbolt, itp.) |
-| 15 | Preset save | Eksport konfiguracji |
-| 16 | Podsumowanie | Przegląd + potwierdzenie YES |
+| 10 | Bootloader | systemd-boot (domyślny) / GRUB (multi-boot z os-prober) |
+| 11 | Kernel | Default / Latest / LTS / Zen |
+| 12 | GPU | NVIDIA (auto open-kernel) / AMD / Intel |
+| 13 | Desktop | KDE Plasma 6 + aplikacje + Flatpak/drukowanie/Bluetooth |
+| 14 | Użytkownicy | Root, user, grupy, SSH |
+| 15 | Pakiety | Dodatkowe pakiety nix + Hyprland ecosystem + opcje sprzętowe (fingerprint, Thunderbolt, itp.) |
+| 16 | Preset save | Eksport konfiguracji |
+| 17 | Podsumowanie | Przegląd + potwierdzenie YES |
 
 Po potwierdzeniu installer:
 1. Partycjonuje dysk (opcjonalnie z LUKS)
