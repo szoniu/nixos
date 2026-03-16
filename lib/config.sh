@@ -147,6 +147,11 @@ validate_config() {
         errors+=("GPU_VENDOR='${GPU_VENDOR}' — must be nvidia, amd, intel, none, or unknown")
     fi
 
+    if [[ -n "${DESKTOP_TYPE:-}" ]] && \
+       [[ "${DESKTOP_TYPE}" != "kde" && "${DESKTOP_TYPE}" != "gnome" ]]; then
+        errors+=("DESKTOP_TYPE='${DESKTOP_TYPE}' — must be kde or gnome")
+    fi
+
     if [[ -n "${ENCRYPTION:-}" ]] && \
        [[ "${ENCRYPTION}" != "none" && "${ENCRYPTION}" != "luks" ]]; then
         errors+=("ENCRYPTION='${ENCRYPTION}' — must be none or luks")

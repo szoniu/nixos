@@ -43,7 +43,11 @@ screen_summary() {
     [[ "${ENABLE_SENSORS:-no}" == "yes" ]] && s+="IIO sensors:  iio-sensor-proxy enabled\n"
     [[ "${ENABLE_WWAN:-no}" == "yes" ]] && s+="WWAN LTE:     ModemManager enabled\n"
     s+="\n"
-    s+="Desktop:      KDE Plasma 6 + SDDM + PipeWire\n"
+    if [[ "${DESKTOP_TYPE:-kde}" == "gnome" ]]; then
+        s+="Desktop:      GNOME + GDM + PipeWire\n"
+    else
+        s+="Desktop:      KDE Plasma 6 + SDDM + PipeWire\n"
+    fi
     s+="Username:     ${USERNAME:-user}\n"
     s+="SSH:          ${ENABLE_SSH:-no}\n"
     [[ -n "${DESKTOP_EXTRAS:-}" ]] && s+="Apps:         ${DESKTOP_EXTRAS}\n"

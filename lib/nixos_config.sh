@@ -286,7 +286,20 @@ NIX
 }
 
 _nix_desktop() {
-    cat << 'NIX'
+    local desktop="${DESKTOP_TYPE:-kde}"
+
+    if [[ "${desktop}" == "gnome" ]]; then
+        cat << 'NIX'
+  # --- Desktop: GNOME ---
+  services.xserver.displayManager.gdm.enable = true;
+  services.xserver.displayManager.gdm.wayland = true;
+  services.desktopManager.gnome.enable = true;
+
+  # XDG portal for Wayland
+  xdg.portal.enable = true;
+NIX
+    else
+        cat << 'NIX'
   # --- Desktop: KDE Plasma ---
   services.displayManager.sddm.enable = true;
   services.displayManager.sddm.wayland.enable = true;
@@ -295,6 +308,7 @@ _nix_desktop() {
   # XDG portal for Wayland
   xdg.portal.enable = true;
 NIX
+    fi
 
     if [[ "${ENABLE_PRINTING:-no}" == "yes" ]]; then
         cat << 'NIX'
