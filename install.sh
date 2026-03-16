@@ -142,6 +142,7 @@ preflight_checks() {
         is_root || die "Must run as root"
         is_efi || die "UEFI boot required"
         has_network || die "Network required"
+        check_dependencies || die "Missing required dependencies"
     fi
     einfo "Preflight OK"
 }

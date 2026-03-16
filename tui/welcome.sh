@@ -29,6 +29,16 @@ Press OK to check prerequisites and continue." || return "${TUI_ABORT}"
     has_network || warnings+=("No network connectivity detected.")
     command -v nixos-install &>/dev/null || errors+=("nixos-install not found. Are you on a NixOS live ISO?")
 
+    # Low-RAM warning
+    local ram_mb
+    ram_mb=$(awk '/^MemTotal:/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null) || ram_mb=4096
+    if (( ram_mb <= 4096 )); then
+        warnings+=("Low RAM detected (${ram_mb} MiB). zram swap is strongly recommended.")
+        # Auto-select zram for low-RAM systems
+        SWAP_TYPE="zram"
+        export SWAP_TYPE
+    fi
+
     local status_text="Prerequisite Check Results:\n\n"
     is_root 2>/dev/null && status_text+="  [OK] Running as root\n"
     is_efi 2>/dev/null && status_text+="  [OK] UEFI boot mode\n"
