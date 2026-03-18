@@ -44,6 +44,9 @@ source "${TUI_DIR}/preset_save.sh"
 source "${TUI_DIR}/summary.sh"
 source "${TUI_DIR}/progress.sh"
 
+# --- Save original PATH for restoration on exit ---
+_ORIG_PATH="${PATH}"
+
 # --- Cleanup trap ---
 cleanup() {
     local rc=$?
@@ -61,6 +64,8 @@ cleanup() {
     if mountpoint -q "${MOUNTPOINT:-/mnt}" 2>/dev/null; then
         unmount_filesystems 2>/dev/null || true
     fi
+    # Restore original PATH (installer may have prepended gum cache dir)
+    export PATH="${_ORIG_PATH}"
     return ${rc}
 }
 trap cleanup EXIT

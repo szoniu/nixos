@@ -73,11 +73,12 @@ Sprawdź: `ping -c 3 nixos.org`
 
 ```bash
 sudo su
-nix-shell -p git
-git clone https://github.com/szoniu/nixos.git
+nix-shell -p git --run "git clone https://github.com/szoniu/nixos.git"
 cd nixos
 ./install.sh
 ```
+
+> **UWAGA**: Nie uruchamiaj `./install.sh` wewnątrz `nix-shell`. Po wyjściu z `nix-shell` (lub crashu instalatora) komendy systemowe (`ls`, `cat`) mogą przestać działać. `nix-shell -p git --run "..."` kończy się automatycznie po sklonowaniu.
 
 Albo bez git:
 
@@ -248,8 +249,7 @@ ssh -o PubkeyAuthentication=no nixos@<IP-live-ISO>
 
 # Potem przełącz na root i uruchom installer
 sudo su
-nix-shell -p git
-git clone https://github.com/szoniu/nixos.git
+nix-shell -p git --run "git clone https://github.com/szoniu/nixos.git"
 cd nixos
 ./install.sh
 ```
