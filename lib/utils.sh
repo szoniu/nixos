@@ -115,8 +115,9 @@ check_dependencies() {
         command -v "${dep}" &>/dev/null || missing+=("${dep}")
     done
 
-    if ! command -v dialog &>/dev/null && ! command -v whiptail &>/dev/null; then
-        missing+=("dialog|whiptail")
+    if ! command -v gum &>/dev/null && ! [[ -f "${DATA_DIR:-}/gum.tar.gz" ]] \
+       && ! command -v dialog &>/dev/null && ! command -v whiptail &>/dev/null; then
+        missing+=("dialog|whiptail|gum")
     fi
 
     if [[ ${#missing[@]} -gt 0 ]]; then

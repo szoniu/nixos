@@ -8,15 +8,17 @@ W przeciwieństwie do Gentoo — tu nic się nie kompiluje. Binarne paczki z cac
 
 ### 1. Przygotuj bootowalny pendrive
 
-Pobierz NixOS ISO (Plasma Desktop edition ma wszystko co trzeba):
+Pobierz NixOS ISO (**Minimal** — mały obraz, wystarczy do instalacji):
 
-- https://nixos.org/download/ → **NixOS: Plasma Desktop**
+- https://nixos.org/download/ → **NixOS: Minimal ISO image**
+
+Plasma Desktop ISO też zadziała, ale waży ~2 GiB. Minimal (~1 GiB) jest szybszy do pobrania i ma wszystko co potrzeba — installer sam doinstaluje KDE/GNOME z binarnego cache.
 
 Nagraj na pendrive:
 
 ```bash
 # UWAGA: /dev/sdX to pendrive, nie dysk systemowy!
-sudo dd if=nixos-plasma-*.iso of=/dev/sdX bs=4M status=progress
+sudo dd if=nixos-minimal-*.iso of=/dev/sdX bs=4M status=progress
 sync
 ```
 
@@ -223,8 +225,10 @@ ps aux | grep -E "tee|nix"
 Na maszynie docelowej (bootowanej z NixOS Live ISO):
 
 ```bash
-# 1. Ustaw hasło root (NixOS Live domyślnie nie ma hasła)
-passwd root
+# 1. Ustaw hasło dla użytkownika nixos
+#    UWAGA: NixOS Live nie pozwala na `passwd root` — konto root jest zablokowane.
+#    Domyślny użytkownik to `nixos` (bez hasła, z sudo).
+passwd nixos
 
 # 2. Sprawdź czy sshd działa (na NixOS Live ISO powinien być domyślnie)
 systemctl status sshd
@@ -239,7 +243,11 @@ ip -4 addr show | grep inet
 Z innego komputera:
 
 ```bash
-ssh -o PubkeyAuthentication=no root@<IP-live-ISO>
+# Łączysz się jako nixos (nie root!)
+ssh -o PubkeyAuthentication=no nixos@<IP-live-ISO>
+
+# Potem przełącz na root i uruchom installer
+sudo su
 nix-shell -p git
 git clone https://github.com/szoniu/nixos.git
 cd nixos
@@ -248,21 +256,23 @@ cd nixos
 
 Installer działa normalnie przez SSH — TUI renderuje się w terminalu SSH.
 
+> **"Permission denied" przy `ssh root@...`?** NixOS Live blokuje logowanie root przez SSH. Łącz się jako `nixos`: `ssh nixos@<IP>`, potem `sudo su`.
+>
 > **"Connection refused"?** Sprawdź czy `sshd` działa: `systemctl status sshd`.
 >
 > **"WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED"?** Po restarcie Live ISO klucze SSH hosta się zmieniają. Usuń stary klucz i połącz się ponownie:
 > ```bash
 > ssh-keygen -R <IP-live-ISO>
-> ssh -o PubkeyAuthentication=no root@<IP-live-ISO>
+> ssh -o PubkeyAuthentication=no nixos@<IP-live-ISO>
 > ```
 
 #### Monitorowanie z drugiego połączenia
 
 ```bash
-ssh root@<IP-live-ISO>
+ssh nixos@<IP-live-ISO>
 
 # Logi w czasie rzeczywistym
-tail -f /tmp/nixos-installer.log
+sudo tail -f /tmp/nixos-installer.log
 
 # Co się instaluje
 top
