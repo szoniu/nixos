@@ -398,7 +398,7 @@ NIX
   hardware.graphics.enable = true;
   hardware.graphics.extraPackages = with pkgs; [
     intel-media-driver
-    vaapiIntel
+    intel-vaapi-driver
   ];
 NIX
             ;;
