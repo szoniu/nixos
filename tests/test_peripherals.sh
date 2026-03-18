@@ -65,7 +65,7 @@ echo "=== Test 4: ENABLE_WWAN=yes -> ModemManager ==="
 set_base_config
 ENABLE_WWAN="yes"
 output=$(_write_configuration_nix)
-assert_contains "ModemManager enabled" "enableModemManager" "${output}"
+assert_contains "ModemManager enabled" "modemmanager" "${output}"
 
 echo ""
 echo "=== Test 5: ENABLE_ASUSCTL=yes -> asusd (via _nix_services) ==="
@@ -81,7 +81,7 @@ output=$(_write_configuration_nix)
 assert_not_contains "No fprintd" "fprintd" "${output}"
 assert_not_contains "No bolt" "bolt" "${output}"
 assert_not_contains "No iio" "iio" "${output}"
-assert_not_contains "No ModemManager" "enableModemManager" "${output}"
+assert_not_contains "No ModemManager" "modemmanager" "${output}"
 assert_not_contains "No asusd" "asusd" "${output}"
 
 echo ""

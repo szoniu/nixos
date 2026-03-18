@@ -441,8 +441,8 @@ NIX
         has_peripherals=1
         cat << 'NIX'
 
-  # WWAN/LTE modem (ModemManager via NetworkManager)
-  networking.networkmanager.enableModemManager = true;
+  # WWAN/LTE modem
+  networking.modemmanager.enable = true;
 NIX
     fi
 
