@@ -112,7 +112,7 @@ screen_progress() {
             continue
         fi
 
-        if [[ "${phase_name}" == "nixos_install" ]]; then
+        if [[ "${phase_name}" == "nixos_install" || "${phase_name}" == "finalize" ]]; then
             _run_phase_with_live_output "${phase_name}" "${phase_desc}"
         else
             _show_phase_status "${i}" "${total}" "${phase_desc}"

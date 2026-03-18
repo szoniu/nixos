@@ -63,13 +63,13 @@ set_nixos_passwords() {
     # Root password
     if [[ "${ROOT_PASSWORD_SET:-}" == "yes" ]]; then
         einfo "You will be prompted to set the root password."
-        nixos-enter --root "${MOUNTPOINT}" -- passwd root
+        nixos-enter --root "${MOUNTPOINT}" -- passwd root </dev/tty
     fi
 
     # User password
     if [[ -n "${USERNAME:-}" && "${USER_PASSWORD_SET:-}" == "yes" ]]; then
         einfo "You will be prompted to set the password for ${USERNAME}."
-        nixos-enter --root "${MOUNTPOINT}" -- passwd "${USERNAME}"
+        nixos-enter --root "${MOUNTPOINT}" -- passwd "${USERNAME}" </dev/tty
     fi
 }
 
