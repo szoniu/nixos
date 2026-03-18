@@ -89,7 +89,7 @@ disk_plan_auto() {
     fi
 
     # Root partition — no size= means remaining space
-    sfdisk_script+="type=${GPT_TYPE_LINUX}, name=linux"$'\n'
+    sfdisk_script+="type=${GPT_TYPE_LINUX}, name=NixOS"$'\n'
 
     disk_plan_add_stdin "Create GPT partition table and partitions on ${disk}" \
         "${sfdisk_script}" \
@@ -307,7 +307,7 @@ disk_plan_dualboot() {
     if [[ -z "${ROOT_PARTITION:-}" ]]; then
         # Need to create root partition in free space using sfdisk --append
         disk_plan_add_stdin "Create root partition in free space" \
-            "type=${GPT_TYPE_LINUX}, name=linux"$'\n' \
+            "type=${GPT_TYPE_LINUX}, name=NixOS"$'\n' \
             sfdisk --append --force --no-reread "${disk}"
 
         # Determine partition name: count existing partitions via sfdisk
