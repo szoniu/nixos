@@ -153,7 +153,7 @@ Configured via nix attributes in `_nix_peripherals()`:
 - `services.fprintd.enable = true` — fingerprint
 - `services.hardware.bolt.enable = true` — thunderbolt
 - `hardware.sensor.iio.enable = true` — IIO sensors
-- `services.modemManager.enable = true` — WWAN
+- `networking.modemmanager.enable = true` — WWAN
 - `services.asusd.enable = true` — ASUS ROG/TUF (via `_nix_services()`)
 
 Opt-in via checklist in `tui/extra_packages.sh` (visible only when hardware detected).
@@ -230,6 +230,31 @@ bash tests/test_shrink.sh          # Partition shrink helpers
 - **Config inference testowanie**: `_RESUME_TEST_DIR` + `_INFER_UUID_MAP` pozwalają testować bez prawdziwego mount/blkid.
 - **POSIX grep (no PCRE)**: NixOS Live may not have `grep -P`. All `grep -oP` replaced with `sed` POSIX equivalents (e.g. `sed -n 's/.*\[\([0-9a-fA-F]\{4\}:[0-9a-fA-F]\{4\}\)\].*/\1/p'`).
 - **gum TUI backend**: `data/gum.tar.gz` extracted to `/tmp/nixos-installer-gum/`. Opt-out: `GUM_BACKEND=0`. Priority: gum > dialog > whiptail.
+
+## Powiązane projekty
+
+### Dotfiles (`~/dotfiles` — [szoniu/dotfiles](https://github.com/szoniu/dotfiles))
+
+Post-install: `bash wizard.sh --install-all` doinstalowuje tooling (zsh, nvim, yazi, starship, lazygit, 40+ appek) i tworzy symlinki konfiguracyjne. Wizard wspiera NixOS (detekcja nix-env, APP_PM_NIX w registry).
+
+TODO: Przenieść `configuration.nix` do `~/dotfiles/nixos/` i zarządzać deklaratywnie z dotfiles repo (symlink `/etc/nixos/configuration.nix → ~/dotfiles/nixos/configuration.nix`).
+
+### Siostrzane installery TUI
+
+Współdzielą architekturę (gum/dialog, checkpointy, resume, presety, hybrid GPU, shrink wizard):
+- [szoniu/gentoo](https://github.com/szoniu/gentoo) — Gentoo (stage3+chroot+Portage, ~3-8h)
+- [szoniu/void](https://github.com/szoniu/void) — Void Linux (XBPS, runit)
+- [szoniu/chimeraos](https://github.com/szoniu/chimeraos) — Chimera Linux (APK, dinit)
+
+### Znane problemy z NixOS Minimal ISO
+
+- `dialog`/`whiptail` niedostępne — installer używa bundlowanego `gum` z `data/gum.tar.gz`
+- `git` niedostępny — `nix-shell -p git --run "git clone ..."` (NIE uruchamiać installera wewnątrz nix-shell)
+- `nixos-enter` psuje PATH — `set_nixos_passwords()` zapisuje/przywraca PATH wokół każdego wywołania
+- `vaapiIntel` → `intel-vaapi-driver` w NixOS 25.11 (renamed)
+- `services.modemManager` → `networking.modemmanager.enable` (lowercase, inny moduł)
+- Root login przez SSH zablokowany — łączyć jako `nixos`, potem `sudo su`
+- `/tmp` sticky bit + `fs.protected_regular=2` — pliki tworzone jako `nixos` nie nadpisywalne przez root
 
 ## Jak dodawać opcje do configuration.nix
 
