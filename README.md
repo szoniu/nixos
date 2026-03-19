@@ -93,7 +93,13 @@ cd nixos-main
 
 Wyjmij pendrive, reboot. Zobaczysz systemd-boot, potem SDDM z KDE Plasma 6.
 
-Po zalogowaniu możesz edytować konfigurację:
+Po zalogowaniu — aktualizacja systemu i pakietów:
+
+```bash
+sudo nixos-rebuild switch --upgrade
+```
+
+To jedno polecenie pobiera najnowsze pakiety z kanału NixOS i przebudowuje system. Żeby dodać/usunąć pakiety — edytuj konfigurację:
 
 ```bash
 sudo nano /etc/nixos/configuration.nix
