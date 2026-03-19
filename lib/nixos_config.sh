@@ -60,16 +60,22 @@ set_nixos_passwords() {
         return 0
     fi
 
+    # nixos-enter modifies PATH (chroot environment). Save and restore
+    # to prevent host commands (date, ls) from disappearing after exit.
+    local saved_path="${PATH}"
+
     # Root password
     if [[ "${ROOT_PASSWORD_SET:-}" == "yes" ]]; then
         einfo "You will be prompted to set the root password."
         nixos-enter --root "${MOUNTPOINT}" -- passwd root </dev/tty
+        export PATH="${saved_path}"
     fi
 
     # User password
     if [[ -n "${USERNAME:-}" && "${USER_PASSWORD_SET:-}" == "yes" ]]; then
         einfo "You will be prompted to set the password for ${USERNAME}."
         nixos-enter --root "${MOUNTPOINT}" -- passwd "${USERNAME}" </dev/tty
+        export PATH="${saved_path}"
     fi
 }
 
