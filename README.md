@@ -272,7 +272,33 @@ Installer działa normalnie przez SSH — TUI renderuje się w terminalu SSH.
 > ssh -o PubkeyAuthentication=no nixos@<IP-live-ISO>
 > ```
 
+#### Użyj tmux — ochrona przed zerwaniem sesji SSH
+
+**Ważne:** Jeśli połączenie SSH się zerwie, instalacja w zwykłej sesji zostanie przerwana. **Zawsze uruchamiaj installer w tmux:**
+
+```bash
+# Na Live ISO (po połączeniu SSH — tmux jest preinstalowany na NixOS Live):
+tmux new -s install
+
+# Przełącz na root i uruchom installer wewnątrz tmux
+sudo su
+nix-shell -p git --run "git clone https://github.com/szoniu/nixos.git"
+cd nixos
+./install.sh
+```
+
+Jeśli połączenie SSH się zerwie:
+```bash
+# Połącz się ponownie i wróć do sesji
+ssh nixos@<IP-live-ISO>
+tmux attach -t install
+```
+
+Instalacja będzie nadal działać w tle — nic nie stracisz.
+
 #### Monitorowanie z drugiego połączenia
+
+Otwórz drugie okno terminala (lub drugi panel tmux — `Ctrl+B` potem `"`):
 
 ```bash
 ssh nixos@<IP-live-ISO>
