@@ -10,10 +10,8 @@
 # Example: Backup current partition table
 # sfdisk --dump "${TARGET_DISK}" > "/tmp/partition-backup-$(date +%Y%m%d).dump"
 #
-# Example: Add custom NixOS config overlay
-# cat >> "${MOUNTPOINT}/etc/nixos/configuration.nix" << 'EOF'
-#   # Custom overlay
-#   services.tailscale.enable = true;
-# EOF
+# Example: Add custom NixOS config (insert before the closing brace)
+# sed -i '/^}$/i\  # Custom overlay\n  services.tailscale.enable = true;' \
+#   "${MOUNTPOINT}/etc/nixos/configuration.nix"
 
 echo "before_install hook executed"

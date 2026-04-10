@@ -4,6 +4,10 @@ source "${LIB_DIR}/protection.sh"
 screen_locale_config() {
     local tz
     tz=$(dialog_inputbox "Timezone" "Enter timezone (e.g., Europe/Warsaw):" "${TIMEZONE:-Europe/Warsaw}") || return "${TUI_BACK}"
+    if [[ ! -f "/usr/share/zoneinfo/${tz}" ]]; then
+        dialog_msgbox "Warning" "Timezone '${tz}' not found in /usr/share/zoneinfo.\nFalling back to UTC."
+        tz="UTC"
+    fi
     TIMEZONE="${tz}"; export TIMEZONE
 
     local locale_choice

@@ -268,7 +268,7 @@ NIX
     extraGroups = [
 ${nix_groups}
     ];
-    initialPassword = "${USERNAME}";
+    # Password set interactively via set_nixos_passwords() after install
   };
 NIX
     fi
@@ -297,8 +297,8 @@ _nix_desktop() {
     if [[ "${desktop}" == "gnome" ]]; then
         cat << 'NIX'
   # --- Desktop: GNOME ---
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.displayManager.gdm.wayland = true;
+  services.displayManager.gdm.enable = true;
+  services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;
 
   # XDG portal for Wayland
@@ -583,8 +583,8 @@ NIX
     options = "--delete-older-than 30d";
   };
 
-  # Allow unfree packages (NVIDIA drivers, etc.)
-  nixpkgs.config.allowUnfree = true;
+  # Allow unfree packages (needed for NVIDIA drivers, vscode, etc.)
+  nixpkgs.config.allowUnfree = true;  # TODO: make conditional on GPU_VENDOR=nvidia or unfree packages
 NIX
 
     echo ""

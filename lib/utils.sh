@@ -108,7 +108,7 @@ countdown() {
 
 check_dependencies() {
     local -a missing=()
-    local -a required_deps=(bash sfdisk mount umount blkid lsblk nixos-install nixos-generate-config)
+    local -a required_deps=(bash sfdisk mount umount blkid lsblk nixos-install nixos-generate-config bc)
 
     local dep
     for dep in "${required_deps[@]}"; do

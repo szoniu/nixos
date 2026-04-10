@@ -18,6 +18,7 @@ readonly INSTALLER_NAME="NixOS TUI Installer"
 : "${GUM_CACHE_DIR:=/tmp/nixos-installer-gum}"
 
 # NixOS channels
+# Update this when a new NixOS stable release is available
 readonly NIXOS_CHANNEL_STABLE="nixos-24.11"
 readonly NIXOS_CHANNEL_UNSTABLE="nixos-unstable"
 
