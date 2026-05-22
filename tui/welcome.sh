@@ -22,6 +22,24 @@ Requirements:
 
 Press OK to check prerequisites and continue." || return "${TUI_ABORT}"
 
+    # Architecture gate — checked FIRST, before anything touches the disk. This
+    # installer is x86_64 only; on aarch64/ARM (Surface Laptop 7 / Snapdragon X,
+    # ARM laptops & SBCs) it would wipe the disk then fail. NOT bypassable.
+    if ! is_supported_arch; then
+        dialog_msgbox "Unsupported architecture" \
+"Detected CPU architecture: $(uname -m 2>/dev/null || echo unknown)
+
+This installer supports ONLY amd64 / x86-64.
+
+ARM/aarch64 machines — including the Microsoft Surface Laptop 7 and other
+Qualcomm Snapdragon X laptops, ARM laptops and SBCs — are NOT supported:
+the nixos-install path, x86_64 channel and bundled tools are all x86-64.
+Proceeding would wipe the disk and then fail.
+
+Installation aborted. No changes were made to any disk."
+        return "${TUI_ABORT}"
+    fi
+
     local -a errors=() warnings=()
 
     is_root || errors+=("Not running as root.")

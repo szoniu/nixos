@@ -102,6 +102,12 @@ NIXHEAD
     # --- Kernel ---
     _nix_kernel
 
+    # --- CPU microcode ---
+    _nix_microcode
+
+    # --- UMPC quirks (GPD/Chuwi portrait panels, ALC287, GPD fan) ---
+    _nix_umpc
+
     # --- Swap ---
     _nix_swap
 
@@ -165,6 +171,119 @@ _nix_kernel() {
             echo "  boot.kernelPackages = pkgs.linuxPackages_zen;"
             echo "" ;;
     esac
+}
+
+# _nix_microcode — CPU microcode updates (security/stability fixes from the CPU
+# vendor). Pulled from redistributable firmware; enabling it is recommended on
+# all real hardware. Vendor inferred from CPU_MARCH (set by detect_cpu).
+_nix_microcode() {
+    case "${CPU_MARCH:-generic}" in
+        intel)
+            echo "  hardware.enableRedistributableFirmware = true;"
+            echo "  hardware.cpu.intel.updateMicrocode = true;"
+            echo "" ;;
+        amd)
+            echo "  hardware.enableRedistributableFirmware = true;"
+            echo "  hardware.cpu.amd.updateMicrocode = true;"
+            echo "" ;;
+    esac
+}
+
+# _nix_umpc — Declarative UMPC quirks for GPD Pocket/Win and Chuwi MiniBook X.
+# NixOS is declarative: instead of writing scripts into the target system (as
+# the Gentoo installer does in lib/umpc.sh), everything is expressed as Nix
+# attributes that nixos-install materializes.
+#   - Panel rotation: boot.kernelParams (fbcon=rotate + video=...:panel_orientation)
+#   - ALC287 Auto-Mute disable: systemd.services.alc287-unmute (oneshot)
+#   - SDDM X11 greeter rotation: services.xserver.displayManager.setupCommands (xrandr)
+#   - GPD fan: a comment pointing at gpd-fan-daemon (no auto-install, declarative)
+_nix_umpc() {
+    [[ "${UMPC_DETECTED:-0}" == "1" ]] || return 0
+
+    echo "  # --- UMPC quirks: ${UMPC_VENDOR} ${UMPC_MODEL} ---"
+
+    # Panel rotation (MOST IMPORTANT): fbcon for early console + panel_orientation
+    # for KMS-aware compositors (KWin, Mutter). Without this the first boot shows
+    # the image rotated because the panel is mounted physically rotated relative
+    # to the casing. Only emit when a panel orientation was determined.
+    if [[ -n "${UMPC_PANEL_ORIENTATION:-}" ]]; then
+        echo "  boot.kernelParams = ["
+        echo "    \"fbcon=rotate:${UMPC_FBCON_ROTATE}\""
+        echo "    \"video=${UMPC_VIDEO_CONNECTOR}:panel_orientation=${UMPC_PANEL_ORIENTATION}\""
+        echo "  ];"
+    fi
+
+    # ALC287 Auto-Mute disable. ALC287 on Pocket 4 (and many AMD Phoenix
+    # laptops) ships with Auto-Mute enabled, which routes audio nowhere unless
+    # a headphone jack is sensed correctly — jack detection on this codec is
+    # unreliable, so speakers stay silent. Fix: disable Auto-Mute via amixer at
+    # boot. Declared as a oneshot systemd unit so it runs every boot after the
+    # sound stack is up. amixer comes from pkgs.alsa-utils referenced directly.
+    if [[ "${UMPC_ALC287_QUIRK:-0}" == "1" ]]; then
+        cat << 'NIX'
+
+  # ALC287 Auto-Mute disable (UMPC speakers are silent without this).
+  systemd.services.alc287-unmute = {
+    description = "Disable ALC287 Auto-Mute and unmute outputs";
+    after = [ "sound.target" ];
+    wants = [ "sound.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.alsa-utils}/bin/amixer -c 0 sset 'Auto-Mute Mode' Disabled || true
+      for ctl in 'Master' 'Speaker' 'Headphone' 'PCM'; do
+        ${pkgs.alsa-utils}/bin/amixer -c 0 sset "$ctl" unmute || true
+        ${pkgs.alsa-utils}/bin/amixer -c 0 sset "$ctl" '100%' || true
+      done
+    '';
+  };
+NIX
+    fi
+
+    # SDDM X11 greeter rotation. The kernel panel_orientation quirk rotates the
+    # fbcon console and is honored by Wayland sessions, but SDDM's greeter runs
+    # on Xorg which ignores panel_orientation — so the login screen alone stays
+    # portrait. Rotate it with xrandr via setupCommands. Xorg names the panel
+    # without the DRM suffix (e.g. "eDP" not "eDP-1"), so auto-detect the
+    # connected output. fbcon rotate -> xrandr: 1=right, 2=inverted, 3=left.
+    if [[ -n "${UMPC_FBCON_ROTATE:-}" && "${UMPC_FBCON_ROTATE}" != "0" ]]; then
+        local rot=""
+        case "${UMPC_FBCON_ROTATE}" in
+            1) rot="right" ;;
+            2) rot="inverted" ;;
+            3) rot="left" ;;
+        esac
+        if [[ -n "${rot}" ]]; then
+            cat << NIX
+
+  # Rotate the SDDM X11 greeter to match the UMPC panel (Xorg ignores the
+  # kernel panel_orientation quirk; the Wayland session honors it on its own).
+  services.xserver.displayManager.setupCommands = ''
+    _out=\$(\${pkgs.xorg.xrandr}/bin/xrandr | \${pkgs.gawk}/bin/awk '/ connected/{print \$1; exit}')
+    [ -n "\$_out" ] && \${pkgs.xorg.xrandr}/bin/xrandr --output "\$_out" --rotate ${rot}
+  '';
+NIX
+        fi
+    fi
+
+    # GPD fan: NixOS is declarative and there is no in-tree gpd-fan-daemon
+    # module, so emit guidance rather than a POST-INSTALL script. Fans run on
+    # ACPI defaults until the daemon is set up (usable, just louder).
+    if [[ "${UMPC_GPD_FAN:-0}" == "1" ]]; then
+        cat << 'NIX'
+
+  # GPD fan control: fans currently run on ACPI defaults (louder than Windows).
+  # For smarter fan curves, package gpd-fan-driver (kernel module) +
+  # gpd-fan-daemon (https://github.com/Cryolitia/gpd-fan-daemon) as a Nix
+  # overlay/derivation and run it via a systemd service, or check whether a
+  # `hardware.gpd`-style option exists in your nixpkgs revision.
+NIX
+    fi
+
+    echo ""
 }
 
 _nix_swap() {

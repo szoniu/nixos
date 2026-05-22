@@ -133,6 +133,10 @@ check_dependencies() {
 is_efi()      { [[ -d /sys/firmware/efi ]]; }
 is_root()     { [[ "$(id -u)" -eq 0 ]]; }
 has_network() { ping -c 1 -W 3 nixos.org &>/dev/null || ping -c 1 -W 3 cache.nixos.org &>/dev/null; }
+# is_supported_arch — hardwired for x86_64. The nixos-install path, x86_64 channel
+# and bundled x86_64 gum binary are x86_64-only. On aarch64/ARM (Surface Laptop 7 /
+# Snapdragon X, ARM laptops/SBCs) it would WIPE THE DISK then fail. NOT bypassable.
+is_supported_arch() { case "$(uname -m 2>/dev/null)" in x86_64|amd64) return 0 ;; *) return 1 ;; esac; }
 
 checkpoint_set()     { mkdir -p "${CHECKPOINT_DIR}"; touch "${CHECKPOINT_DIR}/$1"; einfo "Checkpoint set: $1"; }
 checkpoint_reached() { [[ -f "${CHECKPOINT_DIR}/$1" ]]; }
