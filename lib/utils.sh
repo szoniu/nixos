@@ -396,7 +396,12 @@ _resolve_uuid() {
 }
 
 _infer_from_fstab() {
-    local mp="$1" fstab="${mp}/etc/fstab"
+    # Dwa osobne `local`: rozwijanie ${mp} w TYM SAMYM `local`, w którym jest
+    # przypisywane, nie ma gwarancji kolejności (SC2318). Bash akurat robi to
+    # od lewej, ale to nie jest własność, na której warto opierać ścieżkę
+    # odczytu fstab przy resume.
+    local mp="$1"
+    local fstab="${mp}/etc/fstab"
     [[ -f "${fstab}" ]] || return 0
     local line dev mpoint fstype opts rest
     while IFS= read -r line; do
@@ -524,3 +529,44 @@ infer_config_from_partition() {
 }
 
 get_cpu_count() { nproc 2>/dev/null || echo 4; }
+
+# _resume_target_has_system — True if the planned root partition already holds
+# an installed NixOS system. A missing 'disks' checkpoint does NOT mean the
+# disk is empty: checkpoint-migration glitches, checkpoint_validate pruning or
+# an aborted re-run can drop it while a fully installed system still sits
+# there. Reformatting on that basis destroys hours of work — this probes
+# READ-ONLY (side-effect free) so the disks phase can refuse the destructive
+# plan and mount what is already present instead.
+#
+# Ported from the Gentoo installer, where a blind reformat nearly wiped a built
+# system twice on a GPD Pocket 4 recovery, and from void (c3f2020).
+#
+# btrfs installs live under subvol=@, so that mount is tried first: a
+# top-level mount succeeds but shows only the subvolumes as directories, so
+# every marker below would miss and the probe would wrongly report "empty".
+_resume_target_has_system() {
+    [[ "${DRY_RUN:-0}" == "1" ]] && return 1
+
+    local root="${ROOT_PARTITION:-}"
+    [[ -b "${root}" ]] || root="${RESUME_FOUND_PARTITION:-}"
+    [[ -b "${root}" ]] || return 1
+
+    local probe found=1 opt
+    probe=$(mktemp -d) || return 1
+
+    for opt in "ro,subvol=@" "ro"; do
+        if mount -o "${opt}" "${root}" "${probe}" 2>/dev/null; then
+            # NixOS markers: the store (present from the very first
+            # nixos-install step) or an ID=nixos os-release.
+            if [[ -d "${probe}/nix/store" ]] || \
+               grep -q '^ID=nixos' "${probe}/etc/os-release" 2>/dev/null; then
+                found=0
+            fi
+            umount "${probe}" 2>/dev/null || umount -l "${probe}" 2>/dev/null || true
+            [[ ${found} -eq 0 ]] && break
+        fi
+    done
+
+    rmdir "${probe}" 2>/dev/null || true
+    return ${found}
+}
