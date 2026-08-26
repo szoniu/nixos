@@ -76,6 +76,10 @@ try() {
                 ;;
             continue)
                 ewarn "Skipping: ${desc}"
+                # Rejestr, żeby pominięcie nie zniknęło razem z logiem.
+                # Faza i tak ustawi checkpoint, więc bez tego niekompletna
+                # instalacja wygląda na kompletną.
+                skipped_step_record "${desc}"
                 [[ ${_stderr_redirected} -eq 1 ]] && exec 2>>"${LOG_FILE}"
                 return 0
                 ;;

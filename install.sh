@@ -157,8 +157,17 @@ preflight_checks() {
 run_post_install() {
     einfo "=== Post-installation ==="
 
-    # Copy install log to target disk before unmounting
-    if [[ -f "${LOG_FILE}" ]] && mountpoint -q "${MOUNTPOINT}" 2>/dev/null; then
+    # Głośno o tym, co user pominął w try(). Musi iść PRZED unmount, bo
+    # rejestr leży na dysku docelowym.
+    skipped_steps_report || true
+
+    # Log jest przenoszony na target już w fazie `disks` (log_relocate_to_target),
+    # więc kopiowanie go dopiero tutaj jest zbędne — i było bezużyteczne w
+    # jedynym przypadku, który się liczy: gdy instalacja padnie, ta linia nigdy
+    # nie zostanie osiągnięta, a log przepada razem z tmpfs. Zostawiamy fallback
+    # na wypadek, gdyby relokacja się nie udała (np. read-only target).
+    if [[ -f "${LOG_FILE}" ]] && mountpoint -q "${MOUNTPOINT}" 2>/dev/null && \
+       [[ "${LOG_FILE}" != "${MOUNTPOINT}/var/log/nixos-installer.log" ]]; then
         cp "${LOG_FILE}" "${MOUNTPOINT}/var/log/nixos-installer.log" 2>/dev/null || true
     fi
 
