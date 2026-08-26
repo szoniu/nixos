@@ -55,7 +55,12 @@ GPU_VENDOR="amd"; GPU_DRIVER="amdgpu"; GPU_NVIDIA_OPEN="no"
 ENABLE_SSH="no"; ENABLE_FLATPAK="no"
 output=$(_write_configuration_nix)
 assert_contains "Has amdvlk" "amdvlk" "${output}"
-assert_not_contains "No NVIDIA" "nvidia" "${output}"
+# Asercja celuje w REALNĄ konfigurację NVIDIA, nie w dowolne wystąpienie słowa.
+# Poprzednia wersja szukała gołego "nvidia" w całym wyjściu i łapała
+# bezwarunkowy komentarz przy allowUnfree ("needed for NVIDIA drivers..."),
+# więc test był czerwony dla poprawnie wygenerowanej konfiguracji AMD.
+assert_not_contains "No NVIDIA hardware block" "hardware.nvidia" "${output}"
+assert_not_contains "No NVIDIA videoDriver" 'videoDrivers = [ "nvidia" ]' "${output}"
 assert_not_contains "No flatpak" "flatpak" "${output}"
 
 echo ""

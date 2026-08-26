@@ -99,7 +99,7 @@ config_set() {
     fi
 
     printf -v "${var}" '%s' "${value}"
-    export "${var}"
+    export "${var?}"
 }
 
 config_dump() {

@@ -50,7 +50,7 @@ preset_import() {
     for hw in "${PRESET_HW_VARS[@]}"; do
         if [[ -n "${saved_hw[${hw}]+x}" ]]; then
             printf -v "${hw}" '%s' "${saved_hw[${hw}]}"
-            export "${hw}"
+            export "${hw?}"
         fi
     done
     einfo "Preset imported from ${file}"
