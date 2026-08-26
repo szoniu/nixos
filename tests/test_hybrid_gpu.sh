@@ -35,12 +35,16 @@ assert_eq "Pascal (GTX 1060)" "pascal" "$(nvidia_generation "1c03")"
 assert_eq "Turing (RTX 2080)" "turing" "$(nvidia_generation "1e04")"
 assert_eq "Turing (RTX 2060)" "turing" "$(nvidia_generation "1f08")"
 
-# Ampere: device IDs >= 0x2200 and < 0x2700
+# Ampere: device IDs >= 0x2200 and < 0x2600 (GA107 = 0x25a0 to szczyt)
 assert_eq "Ampere (RTX 3080)" "ampere" "$(nvidia_generation "2206")"
 assert_eq "Ampere (RTX 3060)" "ampere" "$(nvidia_generation "2503")"
+assert_eq "Ampere (GA107, tuz pod progiem)" "ampere" "$(nvidia_generation "25a0")"
 
-# Ada: device IDs >= 0x2700 and < 0x2900
-assert_eq "Ada (RTX 4090)" "ada" "$(nvidia_generation "2704")"
+# Ada: device IDs >= 0x2600 and < 0x2900.
+# AD102 = 0x2684 to RTX 4090 — przy starym progu 0x2700 wypadal jako Ampere,
+# a komentarz w tym tescie utrwalal bledny prog jako oczekiwany.
+assert_eq "Ada (AD102 / RTX 4090)" "ada" "$(nvidia_generation "2684")"
+assert_eq "Ada (RTX 4080)" "ada" "$(nvidia_generation "2704")"
 assert_eq "Ada (RTX 4060)" "ada" "$(nvidia_generation "2882")"
 
 # Blackwell: device IDs >= 0x2900
